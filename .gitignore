@@ -1,0 +1,15 @@
+# Compiled C++ files
+*.exe
+*.o
+*.obj
+*.out
+
+# Godot generated files
+Godot/.godot/
+
+# IDE settings
+.vscode/
+.idea/
+
+# Environment variables and secrets
+.env

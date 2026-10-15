@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include <vector>
 #include <algorithm>
@@ -19,14 +20,28 @@ bool SwarmManager::addRobot(Robot* robot)
         cout << "Invalid robot.\n";
         return false;
     }
+// Prevent two robots from having the same destination.
+for (size_t i = 0; i < robots.size(); i++)
+{
+    if (robots[i]->getDestX() == robot->getDestX() &&
+        robots[i]->getDestY() == robot->getDestY())
+    {
+        cout << "Error: Destination ("
+             << robot->getDestX() << ", "
+             << robot->getDestY()
+             << ") is already assigned to Robot "
+             << robots[i]->getID() << ".\n";
+
+        return false;
+    }
+}
 
     int x = static_cast<int>(robot->getX());
     int y = static_cast<int>(robot->getY());
-
     int dx = static_cast<int>(robot->getDestX());
     int dy = static_cast<int>(robot->getDestY());
 
-    // Check that start and destination are walkable.
+    
     if (!map.isWalkable(x, y))
     {
         cout << "Robot " << robot->getID()
@@ -41,7 +56,6 @@ bool SwarmManager::addRobot(Robot* robot)
         return false;
     }
 
-    // Reject robots that share a starting cell.
     for (int i = 0; i < static_cast<int>(robots.size()); i++)
     {
         if (robots[i]->getX() == robot->getX() &&
@@ -81,6 +95,19 @@ int SwarmManager::getRobotCount() const
 {
     return static_cast<int>(robots.size());
 }
+
+vector<RobotState> SwarmManager::getRobotStates() const
+{
+    vector<RobotState> states;
+
+    for (size_t i = 0; i < robots.size(); i++)
+    {
+        states.push_back(robots[i]->getState());
+    }
+
+    return states;
+}
+
 bool isCellOccupied(
     const vector<Robot*>& robots,
     int x, int y,
@@ -107,14 +134,52 @@ void SwarmManager::runSimulation()
 
     const int MAX_STEPS = 1000;
 
+        // Display a summary of the simulation.
+    auto showSummary = [this]()
+    {
+        int arrived = 0;
+        int waiting = 0;
+        int lowBattery = 0;
+
+        for (int i = 0;
+             i < static_cast<int>(robots.size()); i++)
+        {
+            Robot* robot = robots[i];
+
+            int x = static_cast<int>(robot->getX());
+            int y = static_cast<int>(robot->getY());
+            int dx = static_cast<int>(robot->getDestX());
+            int dy = static_cast<int>(robot->getDestY());
+
+            if (x == dx && y == dy)
+            {
+                arrived++;
+            }
+            else if (!robot->hasBattery())
+            {
+                lowBattery++;
+            }
+            else if (robot->getStatus() == "Waiting")
+            {
+                waiting++;
+            }
+        }
+
+        cout << "\n===== SIMULATION SUMMARY =====\n";
+        cout << "Total robots: " << robots.size() << endl;
+        cout << "Arrived: " << arrived << endl;
+        cout << "Waiting/blocked: " << waiting << endl;
+        cout << "Low battery: " << lowBattery << endl;
+    };
+
     for (int step = 1; step <= MAX_STEPS; step++)
     {
         bool allFinished = true;
         bool anyMoved = false;
 
-        // Process robots with higher priority first.
         vector<Robot*> order = robots;
 
+        // Higher-priority robots move first.
         sort(order.begin(), order.end(),
             [](const Robot* a, const Robot* b)
             {
@@ -124,130 +189,154 @@ void SwarmManager::runSimulation()
         cout << "\n--- Simulation Step "
              << step << " ---\n";
 
-        for (int i = 0;
-             i < static_cast<int>(order.size()); i++)
+        for (int i = 0; i < static_cast<int>(order.size()); i++)
         {
             Robot* robot = order[i];
 
             int x = static_cast<int>(robot->getX());
             int y = static_cast<int>(robot->getY());
-
             int dx = static_cast<int>(robot->getDestX());
             int dy = static_cast<int>(robot->getDestY());
 
-            // This robot has reached its destination.
+            // Already arrived.
             if (x == dx && y == dy)
-{
-    robot->setStatus("Arrived");
-    continue;
-}
-if (!robot->hasBattery())
-{
-    robot->setStatus("Low Battery");
+            {
+                robot->setStatus("Arrived");
+                continue;
+            }
 
-    cout << "Robot " << robot->getID()
-         << " cannot move: battery depleted.\n";
-
-    continue;
-}
-
+            // This robot is not finished yet.
             allFinished = false;
 
-vector<pair<int, int> > temporaryObstacles;
+            if (!robot->hasBattery())
+            {
+                robot->setStatus("Low Battery");
 
-// Temporarily treat other robots as obstacles.
-for (int j = 0; j < static_cast<int>(robots.size()); j++)
-{
-    Robot* other = robots[j];
+                cout << "Robot " << robot->getID()
+                     << " cannot move: battery depleted.\n";
+                continue;
+            }
 
-    if (other == robot)
-        continue;
+            vector<pair<int, int> > temporaryObstacles;
 
-    int otherX = static_cast<int>(other->getX());
-    int otherY = static_cast<int>(other->getY());
+            // Temporarily block other robots, except when one
+            // occupies this robot's destination. Keeping that
+            // destination walkable lets BFS find a route to it.
+            for (int j = 0;
+                 j < static_cast<int>(robots.size()); j++)
+            {
+                Robot* other = robots[j];
 
-    // Record only cells that we successfully block.
-    if (map.addObstacle(otherX, otherY))
-    {
-        temporaryObstacles.push_back(
-            make_pair(otherX, otherY));
-    }
-}
+                if (other == robot)
+                    continue;
 
-// Calculate a route around other robots.
-vector<pair<int, int> > path =
-    finder.findPath(map, x, y, dx, dy);
+                int otherX =
+                    static_cast<int>(other->getX());
+                int otherY =
+                    static_cast<int>(other->getY());
 
-// Remove only the temporary obstacles we added.
-for (int j = 0;
-     j < static_cast<int>(temporaryObstacles.size()); j++)
-{
-    map.removeObstacle(
-        temporaryObstacles[j].first,
-        temporaryObstacles[j].second);
-}
+                if (otherX == dx && otherY == dy)
+                    continue;
 
+                if (map.addObstacle(otherX, otherY))
+                {
+                    temporaryObstacles.push_back(
+                        make_pair(otherX, otherY));
+                }
+            }
 
-            // No route, or already at the destination.
+            vector<pair<int, int> > path =
+                finder.findPath(map, x, y, dx, dy);
+
+            // Remove only temporary obstacles added above.
+            for (int j = 0;
+                 j < static_cast<int>(
+                     temporaryObstacles.size()); j++)
+            {
+                map.removeObstacle(
+                    temporaryObstacles[j].first,
+                    temporaryObstacles[j].second);
+            }
+
             if (path.size() < 2)
             {
+                robot->setStatus("Waiting");
+
                 cout << "Robot " << robot->getID()
-                     << " cannot find a usable next step.\n";
+                     << " is waiting: no usable route "
+                     << "is currently available.\n";
                 continue;
             }
 
             int nextX = path[1].first;
             int nextY = path[1].second;
-            robot->setStatus("Moving");
+
             // Never enter a cell occupied by another robot.
             if (isCellOccupied(
                     robots, nextX, nextY, robot))
             {
                 robot->setStatus("Waiting");
+
                 cout << "Robot " << robot->getID()
-                     << " is waiting: next cell is occupied.\n";
+                     << " is waiting: next cell ("
+                     << nextX << ", " << nextY
+                     << ") is occupied.\n";
                 continue;
             }
 
-            
-if (robot->moveToNextCell(nextX, nextY))
-{
-    anyMoved = true;
-    robot->consumeBattery(1);
+            if (robot->moveToNextCell(nextX, nextY))
+            {
+                anyMoved = true;
+                robot->consumeBattery(1);
 
-cout << "Battery remaining: "
-     << robot->getBattery() << "%\n";
-    cout << "Robot " << robot->getID()
-         << " moved to ("
-         << nextX << ", " << nextY << ")\n";
+                cout << "Battery remaining: "
+                     << robot->getBattery() << "%\n";
 
-    if (robot->getX() == robot->getDestX() &&
-        robot->getY() == robot->getDestY())
-    {
-        robot->setStatus("Arrived");
-    }
-}
+                cout << "Robot " << robot->getID()
+                     << " moved to ("
+                     << nextX << ", " << nextY << ")\n";
 
+                if (nextX == dx && nextY == dy)
+                {
+                    robot->setStatus("Arrived");
+                }
+                else
+                {
+                    robot->setStatus("Moving");
+                }
+            }
+            else
+            {
+                robot->setStatus("Waiting");
+
+                cout << "Robot " << robot->getID()
+                     << " could not move to the next cell.\n";
+            }
         }
-        
+
         if (allFinished)
         {
             cout << "\nAll robots reached their destinations!\n";
+             showSummary();
             return;
         }
 
-        // Stop instead of running forever if nobody can move.
+        displayCurrentMap();
+
         if (!anyMoved)
         {
             cout << "\nSimulation paused: no robot could move.\n";
-            cout << "Some robots may be blocked or have no route.\n";
+            cout << "Unfinished robots may be blocked, "
+                 << "out of battery, or unable to reach "
+                 << "their destinations.\n";
             return;
         }
-        displayCurrentMap();
     }
 
     cout << "\nMaximum simulation steps reached.\n";
+    showSummary();
 }
+
 void SwarmManager::displayCurrentMap() const
 {
     vector<pair<int, int> > positions;

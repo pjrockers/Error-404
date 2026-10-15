@@ -4,14 +4,17 @@
 
 using namespace std;
 
+
 DeliveryRobot::DeliveryRobot(int robotID,
                              string robotName,
                              int capacity)
-    : Robot(robotID, robotName, "Delivery")
+    : Robot(robotID, robotName, "Delivery"),
+      packageCapacity(capacity > 0 ? capacity : 1),
+      packagesCarried(0)
 {
-    packageCapacity = capacity;
-    packagesCarried = 0;
 }
+
+
 
 void DeliveryRobot::loadPackages(int count)
 {
@@ -21,9 +24,11 @@ void DeliveryRobot::loadPackages(int count)
         return;
     }
 
-    if (packagesCarried + count > packageCapacity)
+    if (count > packageCapacity - packagesCarried)
     {
         cout << "Cannot load packages. Capacity exceeded!\n";
+        cout << "Available space: "
+             << packageCapacity - packagesCarried << endl;
         return;
     }
 
@@ -31,6 +36,7 @@ void DeliveryRobot::loadPackages(int count)
 
     cout << count << " package(s) loaded successfully.\n";
 }
+
 
 void DeliveryRobot::displayInfo()
 {

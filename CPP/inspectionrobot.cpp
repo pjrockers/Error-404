@@ -6,9 +6,9 @@ using namespace std;
 
 InspectionRobot::InspectionRobot(int robotID,
                                  string robotName)
-    : Robot(robotID, robotName, "Inspection")
+    : Robot(robotID, robotName, "Inspection"),
+      inspectionsCompleted(0)
 {
-    inspectionsCompleted = 0;
 }
 
 void InspectionRobot::completeInspection()
@@ -25,3 +25,4 @@ void InspectionRobot::displayInfo()
     cout << "Inspections Completed: "
          << inspectionsCompleted << endl;
 }
+

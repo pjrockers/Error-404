@@ -4,7 +4,7 @@
 #include <string>
 #include <utility>
 #include <limits>
-
+#include "robotstate.h"
 #include "robot.h"
 #include "deliveryrobot.h"
 #include "rescuerobot.h"
@@ -12,6 +12,7 @@
 #include "gridmap.h"
 #include "swarmmanager.h"
 #include "pathfinder.h"
+#include "stateexporter.h"
 
 using namespace std;
 
@@ -84,6 +85,7 @@ pair<int, int> readWalkableCell(
     }
 }
 
+
 bool validateRobotRoutes(
     const GridMap& map,
     const vector<Robot*>& robots)
@@ -113,13 +115,33 @@ bool validateRobotRoutes(
                  << "): NO ROUTE FOUND.\n";
 
             allValid = false;
+            continue;
+        }
+
+        int movesRequired = static_cast<int>(path.size()) - 1;
+        int batteryAvailable = robot->getBattery();
+
+        cout << "\nRobot " << robot->getID()
+             << ": Route available. "
+             << "Moves required: " << movesRequired
+             << endl;
+
+        cout << "Battery available: "
+             << batteryAvailable << "%" << endl;
+
+        if (batteryAvailable < movesRequired)
+        {
+            cout << "INSUFFICIENT BATTERY! Robot "
+                 << robot->getID()
+                 << " needs at least "
+                 << movesRequired
+                 << "% battery to reach its destination.\n";
+
+            allValid = false;
         }
         else
         {
-            cout << "Robot " << robot->getID()
-                 << ": Route available. "
-                 << "Moves required: " << path.size() - 1
-                 << endl;
+            cout << "Battery check passed.\n";
         }
     }
 
@@ -296,6 +318,11 @@ int main()
         {
             battery = readDouble(
                 "Starting battery (0-100%): ");
+                if (battery < 10)
+{
+    cout << "Warning: This robot has very low battery "
+         << "and may not complete its journey.\n";
+}
 
             if (robot->setBattery(battery))
                 break;
@@ -341,18 +368,76 @@ displayRobotGrid(map, robots);
            
 if (choice == 1)
 {
-    if (validateRobotRoutes(map, robots))
-    {
-        manager.runSimulation();
-    }
-    else
-    {
-        cout << "\nSimulation cancelled because "
-             << "one or more robots have no route.\n";
-    }
+    
+if (validateRobotRoutes(map, robots))
+{
+    manager.runSimulation();
+}
+else
+{
+    cout << "\nSimulation cancelled because "
+         << "one or more robots failed route "
+         << "or battery validation.\n";
+}
+
 
     cout << "\n===== FINAL ROBOT STATUS =====\n";
     manager.displayRobots();
+
+    
+vector<RobotState> states = manager.getRobotStates();
+
+if (StateExporter::exportToCSV(states, "robot_states.csv"))
+{
+    cout << "\nRobot states exported to robot_states.csv\n";
+}
+else
+{
+    cout << "\nFailed to export robot states.\n";
+}
+
+
+
+if (StateExporter::exportToCSV(states, "robot_states.csv"))
+    cout << "CSV export successful.\n";
+else
+    cout << "CSV export failed.\n";
+
+if (StateExporter::exportToJSON(states, "robot_states.json"))
+    cout << "JSON export successful.\n";
+else
+    cout << "JSON export failed.\n";
+
+    
+cout << "\n===== EXPORTED ROBOT STATES =====\n";
+
+
+for (size_t i = 0; i < states.size(); i++)
+{
+    cout << "Robot ID: " << states[i].id << endl;
+    cout << "Name: " << states[i].name << endl;
+    cout << "Type: " << states[i].type << endl;
+
+    cout << "Position: ("
+         << states[i].x << ", "
+         << states[i].y << ")\n";
+
+    cout << "Destination: ("
+         << states[i].destX << ", "
+         << states[i].destY << ")\n";
+
+    cout << "Battery: "
+         << states[i].battery << "%\n";
+
+    cout << "Priority: "
+         << states[i].priority << endl;
+
+    cout << "Status: "
+         << states[i].status << endl;
+
+    cout << "--------------------------\n";
+}
+
 }
 
         }

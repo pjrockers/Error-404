@@ -5,6 +5,7 @@
 #include <vector>
 #include "robot.h"
 #include "gridmap.h"
+#include "robotstate.h"
 
 class SwarmManager
 {
@@ -14,7 +15,7 @@ private:
 
 public:
     SwarmManager(GridMap& grid);
-
+    vector<RobotState> getRobotStates() const;
     bool addRobot(Robot* robot);
     void displayRobots() const;
 

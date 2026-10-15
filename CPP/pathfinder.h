@@ -11,7 +11,7 @@ using namespace std;
 class Pathfinder
 {
 public:
-    static vector<pair<int, int> > findPath(
+    vector<pair<int, int> > findPath(
         const GridMap& map,
         int startX, int startY,
         int destX, int destY
@@ -19,3 +19,4 @@ public:
 };
 
 #endif
+

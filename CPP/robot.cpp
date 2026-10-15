@@ -3,23 +3,22 @@
 
 using namespace std;
 
+
 Robot::Robot(int robotID, string robotName, string robotType)
+    : id(robotID),
+      name(robotName),
+      type(robotType),
+      x(0),
+      y(0),
+      destX(0),
+      destY(0),
+      battery(100),
+      speed(5),
+      priority(1),
+      status("Idle")
 {
-    id = robotID;
-    name = robotName;
-    type = robotType;
-
-    x = 0;
-    y = 0;
-
-    destX = 0;
-    destY = 0;
-
-    battery = 100;
-    speed = 5;
-    priority = 1;
-    status = "Idle";
 }
+
 
 void Robot::displayInfo()
 {
@@ -38,9 +37,7 @@ void Robot::displayInfo()
     cout << "Status: " << status << endl;
 }
 
-Robot::~Robot()
-{
-}
+Robot::~Robot() = default;
 
 void Robot::setPriority(int p)
 {
@@ -65,6 +62,15 @@ void Robot::setDestination(double dx, double dy)
 int Robot::getID() const
 {
     return id;
+}
+string Robot::getName() const
+{
+    return name;
+}
+
+string Robot::getType() const
+{
+    return type;
 }
 
 double Robot::getBattery() const
@@ -140,6 +146,30 @@ bool Robot::moveToNextCell(int nextX, int nextY)
 
     return true;
 }
+
+RobotState Robot::getState() const
+{
+    RobotState state;
+
+    state.id = id;
+    state.name = name;
+    state.type = type;
+
+    state.x = x;
+    state.y = y;
+
+    state.destX = destX;
+    state.destY = destY;
+
+    state.battery = battery;
+    state.speed = speed;
+
+    state.priority = priority;
+    state.status = status;
+
+    return state;
+}
+
 void Robot::setStatus(string newStatus)
 {
     status = newStatus;

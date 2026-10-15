@@ -1,0 +1,17 @@
+{
+  "robots": [
+    {
+      "id": 1,
+      "name": "aq",
+      "type": "Delivery",
+      "x": 7,
+      "y": 6,
+      "destX": 7,
+      "destY": 6,
+      "battery": 94,
+      "speed": 5,
+      "priority": 1,
+      "status": "Arrived"
+    }
+  ]
+}

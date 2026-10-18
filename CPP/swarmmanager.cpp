@@ -1,10 +1,14 @@
-
+#include <fstream>
 #include <iostream>
 #include <vector>
 #include <algorithm>
 #include <utility>
 #include "swarmmanager.h"
 #include "pathfinder.h"
+
+#include <thread>
+#include <chrono>
+#include <windows.h>
 
 using namespace std;
 
@@ -96,18 +100,6 @@ int SwarmManager::getRobotCount() const
     return static_cast<int>(robots.size());
 }
 
-vector<RobotState> SwarmManager::getRobotStates() const
-{
-    vector<RobotState> states;
-
-    for (size_t i = 0; i < robots.size(); i++)
-    {
-        states.push_back(robots[i]->getState());
-    }
-
-    return states;
-}
-
 bool isCellOccupied(
     const vector<Robot*>& robots,
     int x, int y,
@@ -130,7 +122,55 @@ void SwarmManager::runSimulation()
 {
     Pathfinder finder;
 
+    //json writing 
+    
+    // Export current robot states for Godot.
+    auto exportRobotState = [this]()
+    {
+        ofstream file("C:/roboSwarmBridge/robot_state.json");
+
+        if (!file.is_open())
+        {
+            cerr << "ERROR: Could not write robot_state.json\n";
+            return;
+        }
+
+        file << "{\n";
+        file << "  \"grid\": {\n";
+        file << "    \"rows\": " << map.getRows() << ",\n";
+        file << "    \"cols\": " << map.getCols() << "\n";
+        file << "  },\n";
+        file << "  \"robots\": [\n";
+
+        for (size_t i = 0; i < robots.size(); i++)
+        {
+            Robot* robot = robots[i];
+
+            file << "    {\n";
+            file << "      \"id\": " << robot->getID() << ",\n";
+            file << "      \"x\": " << robot->getX() << ",\n";
+            file << "      \"y\": " << robot->getY() << ",\n";
+            file << "      \"dest_x\": " << robot->getDestX() << ",\n";
+            file << "      \"dest_y\": " << robot->getDestY() << ",\n";
+            file << "      \"battery\": " << robot->getBattery() << "\n";
+            file << "    }";
+
+            if (i + 1 < robots.size())
+                file << ",";
+
+            file << "\n";
+        }
+
+        file << "  ]\n";
+        file << "}\n";
+
+        file.close();
+    };
+// json ends
+
     cout << "\n===== STARTING SWARM SIMULATION =====\n";
+
+    exportRobotState(); //json shit
 
     const int MAX_STEPS = 1000;
 
@@ -313,7 +353,8 @@ void SwarmManager::runSimulation()
                      << " could not move to the next cell.\n";
             }
         }
-
+        exportRobotState();//json 
+        Sleep(500); // json 
         if (allFinished)
         {
             cout << "\nAll robots reached their destinations!\n";

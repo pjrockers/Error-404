@@ -1,0 +1,100 @@
+[gd_scene format=3 uid="uid://qwvmw4solh4w"]
+
+[ext_resource type="Script" uid="uid://c8y0xtugei0hu" path="res://main.gd" id="1_0llpg"]
+[ext_resource type="PackedScene" uid="uid://dwp7gwmmfiuq8" path="res://robot.tscn" id="2_a1u8q"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_3h12i"]
+size = Vector2(20, 20)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rf5wo"]
+albedo_color = Color(0.56026953, 0.8960704, 0.3958757, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_a1u8q"]
+albedo_color = Color(0.82650936, 2.3102762e-06, 9.62615e-08, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_a1u8q"]
+size = Vector3(0.8, 0.4, 0.8)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_78rud"]
+albedo_color = Color(0.0036358451, 0.8344733, 3.85046e-07, 1)
+
+[node name="Node3D" type="Node3D" unique_id=756189816 node_paths=PackedStringArray("floor_node", "obstacle_container")]
+script = ExtResource("1_0llpg")
+floor_node = NodePath("MeshInstance3D")
+obstacle_container = NodePath("DynamicObstacles")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=47012761]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.13222426, 0, -0.009723604)
+mesh = SubResource("PlaneMesh_3h12i")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="MeshInstance3D" unique_id=1730113293]
+light_energy = 2.0
+
+[node name="Camera3D" type="Camera3D" parent="MeshInstance3D/DirectionalLight3D" unique_id=299451669]
+transform = Transform3D(0.8660254, -0.28678823, 0.40957603, 0, 0.81915206, 0.57357645, -0.5, -0.49673176, 0.7094065, 10, 14, 16)
+current = true
+
+[node name="robotBody" parent="." unique_id=807687508 instance=ExtResource("2_a1u8q")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, -3)
+material_override = SubResource("StandardMaterial3D_rf5wo")
+
+[node name="robotBody2" parent="." unique_id=1485074418 instance=ExtResource("2_a1u8q")]
+material_override = SubResource("StandardMaterial3D_a1u8q")
+
+[node name="robotBody3" parent="." unique_id=921990405 instance=ExtResource("2_a1u8q")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0, 3)
+mesh = SubResource("BoxMesh_a1u8q")
+surface_material_override/0 = SubResource("StandardMaterial3D_78rud")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=360540432]
+
+[node name="Control" type="Control" parent="CanvasLayer" unique_id=1948257998]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Dashboard" type="PanelContainer" parent="CanvasLayer/Control" unique_id=1734179924]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CanvasLayer/Control/Dashboard" unique_id=1977943376]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="CanvasLayer/Control/Dashboard/VBoxContainer" unique_id=1601192370]
+layout_mode = 2
+text = "ROBOT SWARM SIMULATOR"
+
+[node name="Button-START" type="Button" parent="CanvasLayer/Control/Dashboard/VBoxContainer" unique_id=1582757328]
+layout_mode = 2
+text = "START"
+
+[node name="Button2-PAUSE" type="Button" parent="CanvasLayer/Control/Dashboard/VBoxContainer" unique_id=1180673739]
+layout_mode = 2
+text = "PAUSE"
+
+[node name="Button3-RESET" type="Button" parent="CanvasLayer/Control/Dashboard/VBoxContainer" unique_id=510955976]
+layout_mode = 2
+text = "RESET"
+
+[node name="StatusLabel" type="Label" parent="CanvasLayer/Control/Dashboard/VBoxContainer" unique_id=1457220859]
+layout_mode = 2
+text = "Status: Ready"
+
+[node name="RobotCountLabel" type="Label" parent="CanvasLayer/Control/Dashboard/VBoxContainer" unique_id=1842985599]
+layout_mode = 2
+text = "Robots: 3"
+
+[node name="BatteryLabel" type="Label" parent="CanvasLayer/Control/Dashboard/VBoxContainer" unique_id=1619538282]
+layout_mode = 2
+text = "Battery: 100%"
+
+[node name="DynamicObstacles" type="Node3D" parent="." unique_id=2133939172]
+
+[connection signal="pressed" from="CanvasLayer/Control/Dashboard/VBoxContainer/Button-START" to="." method="_on_button_start_pressed"]
+[connection signal="pressed" from="CanvasLayer/Control/Dashboard/VBoxContainer/Button2-PAUSE" to="." method="_on_button_2pause_pressed"]
+[connection signal="pressed" from="CanvasLayer/Control/Dashboard/VBoxContainer/Button2-PAUSE" to="." method="_on_pause_pressed"]
+[connection signal="pressed" from="CanvasLayer/Control/Dashboard/VBoxContainer/Button3-RESET" to="." method="_on_reset_pressed"]

@@ -1,5 +1,3 @@
-
-#include <iostream>
 #include <vector>
 #include <queue>
 #include <utility>
@@ -19,7 +17,6 @@ vector<pair<int, int> > Pathfinder::findPath(
     if (!map.isWalkable(startX, startY) ||
         !map.isWalkable(destX, destY))
     {
-        cout << "Invalid start or destination!\n";
         return path;
     }
 
@@ -79,7 +76,6 @@ vector<pair<int, int> > Pathfinder::findPath(
 
     if (!found)
     {
-        cout << "No path exists!\n";
         return path;
     }
 

@@ -38,6 +38,7 @@ public:
     int getID() const;
     string getName() const;
     string getType() const;
+    double getSpeed() const;
     double getBattery() const;
     string getStatus() const;
     RobotState getState() const;

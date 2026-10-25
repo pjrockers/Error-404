@@ -72,7 +72,10 @@ string Robot::getType() const
 {
     return type;
 }
-
+double Robot::getSpeed() const
+{
+    return speed;
+}
 double Robot::getBattery() const
 {
     return battery;

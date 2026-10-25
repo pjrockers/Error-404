@@ -12,6 +12,7 @@ class SwarmManager
 private:
     GridMap& map;
     vector<Robot*> robots;
+    vector<int> waitCounters;
 
 public:
     SwarmManager(GridMap& grid);

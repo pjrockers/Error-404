@@ -15,7 +15,6 @@ private:
 
 public:
     GridMap(int r = 20, int c = 20);
-
     bool isInside(int x, int y) const;
     bool isWalkable(int x, int y) const;
     bool isObstacle(int x, int y) const;

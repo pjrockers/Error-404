@@ -77,6 +77,7 @@ for (size_t i = 0; i < robots.size(); i++)
     }
 
     robots.push_back(robot);
+    waitCounters.push_back(0);
 
     cout << robot->getStatus()
          << " robot registered successfully. ID: "
@@ -98,6 +99,37 @@ void SwarmManager::displayRobots() const
 int SwarmManager::getRobotCount() const
 {
     return static_cast<int>(robots.size());
+}
+vector<RobotState> SwarmManager::getRobotStates() const
+{
+    vector<RobotState> states;
+
+    for (size_t i = 0; i < robots.size(); i++)
+    {
+        Robot* robot = robots[i];
+
+        RobotState state;
+
+        state.id = robot->getID();
+        state.name = robot->getName();
+        state.type = robot->getType();
+
+        state.x = robot->getX();
+        state.y = robot->getY();
+
+        state.destX = robot->getDestX();
+        state.destY = robot->getDestY();
+
+        state.battery = robot->getBattery();
+        state.speed = robot->getSpeed();
+
+        state.priority = robot->getPriority();
+        state.status = robot->getStatus();
+
+        states.push_back(state);
+    }
+
+    return states;
 }
 
 bool isCellOccupied(
@@ -145,6 +177,7 @@ void SwarmManager::runSimulation()
         for (size_t i = 0; i < robots.size(); i++)
         {
             Robot* robot = robots[i];
+            
 
             file << "    {\n";
             file << "      \"id\": " << robot->getID() << ",\n";
@@ -217,14 +250,47 @@ void SwarmManager::runSimulation()
         bool allFinished = true;
         bool anyMoved = false;
 
-        vector<Robot*> order = robots;
+        
+vector<Robot*> order = robots;
 
-        // Higher-priority robots move first.
-        sort(order.begin(), order.end(),
-            [](const Robot* a, const Robot* b)
-            {
-                return a->getPriority() > b->getPriority();
-            });
+// Calculate priority using the robot's original priority
+// and how long it has been waiting.
+auto effectivePriority = [this](Robot* robot)
+{
+    int index = 0;
+
+    while (index < static_cast<int>(robots.size()) &&
+           robots[index] != robot)
+    {
+        index++;
+    }
+
+    if (index >= static_cast<int>(robots.size()))
+    {
+        return robot->getPriority();
+    }
+
+    int waitingBonus = waitCounters[index] / 3;
+
+    return robot->getPriority() + waitingBonus;
+};
+
+sort(order.begin(), order.end(),
+    [this, &effectivePriority](Robot* a, Robot* b)
+    {
+        int priorityA = effectivePriority(a);
+        int priorityB = effectivePriority(b);
+
+        if (priorityA != priorityB)
+        {
+            return priorityA > priorityB;
+        }
+
+        // If effective priorities are equal,
+        // prefer the robot with the higher original priority.
+        return a->getPriority() > b->getPriority();
+    });
+
 
         cout << "\n--- Simulation Step "
              << step << " ---\n";
@@ -232,6 +298,13 @@ void SwarmManager::runSimulation()
         for (int i = 0; i < static_cast<int>(order.size()); i++)
         {
             Robot* robot = order[i];
+            int robotIndex = 0;
+
+while (robotIndex < static_cast<int>(robots.size()) &&
+       robots[robotIndex] != robot)
+{
+    robotIndex++;
+}
 
             int x = static_cast<int>(robot->getX());
             int y = static_cast<int>(robot->getY());
@@ -301,6 +374,14 @@ void SwarmManager::runSimulation()
             if (path.size() < 2)
             {
                 robot->setStatus("Waiting");
+                waitCounters[robotIndex]++;
+                if (waitCounters[robotIndex] >= 3)
+{
+    cout << "Warning: Robot " << robot->getID()
+         << " has been waiting for "
+         << waitCounters[robotIndex]
+         << " consecutive steps.\n";
+}
 
                 cout << "Robot " << robot->getID()
                      << " is waiting: no usable route "
@@ -316,6 +397,14 @@ void SwarmManager::runSimulation()
                     robots, nextX, nextY, robot))
             {
                 robot->setStatus("Waiting");
+                waitCounters[robotIndex]++;
+                if (waitCounters[robotIndex] >= 3)
+{
+    cout << "Warning: Robot " << robot->getID()
+         << " has been waiting for "
+         << waitCounters[robotIndex]
+         << " consecutive steps.\n";
+}
 
                 cout << "Robot " << robot->getID()
                      << " is waiting: next cell ("
@@ -325,9 +414,10 @@ void SwarmManager::runSimulation()
             }
 
             if (robot->moveToNextCell(nextX, nextY))
-            {
-                anyMoved = true;
-                robot->consumeBattery(1);
+{
+    anyMoved = true;
+    waitCounters[robotIndex] = 0;
+    robot->consumeBattery(1);
 
                 cout << "Battery remaining: "
                      << robot->getBattery() << "%\n";
@@ -348,6 +438,14 @@ void SwarmManager::runSimulation()
             else
             {
                 robot->setStatus("Waiting");
+                waitCounters[robotIndex]++;
+                if (waitCounters[robotIndex] >= 3)
+{
+    cout << "Warning: Robot " << robot->getID()
+         << " has been waiting for "
+         << waitCounters[robotIndex]
+         << " consecutive steps.\n";
+}
 
                 cout << "Robot " << robot->getID()
                      << " could not move to the next cell.\n";
@@ -364,14 +462,43 @@ void SwarmManager::runSimulation()
 
         displayCurrentMap();
 
-        if (!anyMoved)
+        
+if (!anyMoved)
+{
+    cout << "\nNo robot moved during this step.\n";
+    cout << "Checking whether the simulation can continue.\n";
+
+    bool unfinishedRobotHasBattery = false;
+
+    for (size_t i = 0; i < robots.size(); i++)
+    {
+        Robot* robot = robots[i];
+
+        bool arrived =
+            static_cast<int>(robot->getX()) ==
+                static_cast<int>(robot->getDestX()) &&
+            static_cast<int>(robot->getY()) ==
+                static_cast<int>(robot->getDestY());
+
+        if (!arrived && robot->hasBattery())
         {
-            cout << "\nSimulation paused: no robot could move.\n";
-            cout << "Unfinished robots may be blocked, "
-                 << "out of battery, or unable to reach "
-                 << "their destinations.\n";
-            return;
+            unfinishedRobotHasBattery = true;
+            break;
         }
+    }
+
+    if (!unfinishedRobotHasBattery)
+    {
+        cout << "No unfinished robot has enough battery to move.\n";
+        showSummary();
+        return;
+    }
+
+    cout << "Robots are blocked. Ending this attempt safely.\n";
+    showSummary();
+    return;
+}
+
     }
 
     cout << "\nMaximum simulation steps reached.\n";

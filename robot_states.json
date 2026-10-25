@@ -1,0 +1,30 @@
+{
+  "robots": [
+    {
+      "id": 1,
+      "name": "q",
+      "type": "General",
+      "x": 4,
+      "y": 4,
+      "destX": 4,
+      "destY": 4,
+      "battery": 95,
+      "speed": 5,
+      "priority": 2,
+      "status": "Arrived"
+    },
+    {
+      "id": 2,
+      "name": "b",
+      "type": "General",
+      "x": 9,
+      "y": 9,
+      "destX": 9,
+      "destY": 9,
+      "battery": 89,
+      "speed": 5,
+      "priority": 3,
+      "status": "Arrived"
+    }
+  ]
+}

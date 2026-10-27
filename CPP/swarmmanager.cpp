@@ -206,7 +206,8 @@ void SwarmManager::runSimulation()
     exportRobotState(); //json shit
 
     const int MAX_STEPS = 1000;
-
+    int blockedRetryCount = 0;
+    const int MAX_BLOCKED_RETRIES = 3;
         // Display a summary of the simulation.
     auto showSummary = [this]()
     {
@@ -466,7 +467,6 @@ while (robotIndex < static_cast<int>(robots.size()) &&
 if (!anyMoved)
 {
     cout << "\nNo robot moved during this step.\n";
-    cout << "Checking whether the simulation can continue.\n";
 
     bool unfinishedRobotHasBattery = false;
 
@@ -494,9 +494,30 @@ if (!anyMoved)
         return;
     }
 
-    cout << "Robots are blocked. Ending this attempt safely.\n";
+    blockedRetryCount++;
+
+    if (blockedRetryCount <= MAX_BLOCKED_RETRIES)
+    {
+        cout << "Robots may be temporarily blocked.\n";
+        cout << "Retry attempt: "
+             << blockedRetryCount
+             << " of "
+             << MAX_BLOCKED_RETRIES
+             << "\n";
+
+        continue;
+    }
+
+    cout << "Deadlock detected: no robot could move after "
+         << MAX_BLOCKED_RETRIES
+         << " retry attempts.\n";
+
     showSummary();
     return;
+}
+else
+{
+    blockedRetryCount = 0;
 }
 
     }

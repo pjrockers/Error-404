@@ -19,3 +19,10 @@ Godot/.godot/
 # Environment variables and secrets
 .env
 >>>>>>> origin/main
+
+# Local databases
+robotswarm.db
+test.db
+
+# Local test programs
+compiler_test.cpp

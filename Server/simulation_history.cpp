@@ -3,13 +3,27 @@
 #include "auth.h"
 #include "database.h"
 #include <string>
+#include <iostream>
+#include <cctype>
 #include <ctime>
 #include <nlohmann/json.hpp>
 #include "sqlite/sqlite3.h"
 
 using namespace std;
 using json = nlohmann::json;
+bool isValidHistorySessionToken(const string& token)
+{
+    if (token.length() != 64)
+        return false;
 
+    for (unsigned char ch : token)
+    {
+        if (!isxdigit(ch))
+            return false;
+    }
+
+    return true;
+}
 void registerSimulationHistoryRoutes(httplib::Server& server)
 {
     // Save simulation history for the logged-in user
@@ -29,7 +43,18 @@ void registerSimulationHistoryRoutes(httplib::Server& server)
             }
 
             string token = authHeader.substr(7);
-            string tokenHash = hashSessionToken(token);
+
+if (!isValidHistorySessionToken(token))
+{
+    res.status = 401;
+    res.set_content(
+        R"({"error":"Invalid session token."})",
+        "application/json"
+    );
+    return;
+}
+
+string tokenHash = hashSessionToken(token);
             json data;
 
             try
@@ -68,7 +93,7 @@ void registerSimulationHistoryRoutes(httplib::Server& server)
             int cols = data["grid_cols"].get<int>();
             int robotCount = data["robot_count"].get<int>();
 
-            if (simulationName.empty() ||
+           if (simulationName.find_first_not_of(" \t\n\r") == string::npos ||
                 simulationName.length() > 100 ||
                 simulationResult.empty() ||
                 simulationResult.length() > 10000 ||
@@ -94,6 +119,7 @@ void registerSimulationHistoryRoutes(httplib::Server& server)
                     "application/json");
                 return;
             }
+            DatabaseGuard dbGuard(db);
 
             const char* sessionSql =
                 "SELECT user_id FROM sessions "
@@ -113,18 +139,35 @@ void registerSimulationHistoryRoutes(httplib::Server& server)
             }
 
             if (result != SQLITE_ROW)
-            {
-                sqlite3_finalize(statement);
-                sqlite3_close(db);
+{
+    if (result != SQLITE_DONE)
+    {
+        cerr << "History session lookup failed: "
+             << sqlite3_errmsg(db) << endl;
+    }
 
-                res.status = (result == SQLITE_DONE) ? 401 : 500;
-                res.set_content(
-                    result == SQLITE_DONE
-                        ? R"({"error":"Invalid or expired session."})"
-                        : R"({"error":"Session lookup failed."})",
-                    "application/json");
-                return;
-            }
+    if (statement != NULL)
+        sqlite3_finalize(statement);
+
+    if (result == SQLITE_DONE)
+    {
+        res.status = 401;
+        res.set_content(
+            R"({"error":"Invalid or expired session."})",
+            "application/json"
+        );
+    }
+    else
+    {
+        res.status = 500;
+        res.set_content(
+            R"({"error":"Session lookup failed."})",
+            "application/json"
+        );
+    }
+
+    return;
+}
 
             sqlite3_int64 userId = sqlite3_column_int64(statement, 0);
             sqlite3_finalize(statement);
@@ -134,34 +177,59 @@ void registerSimulationHistoryRoutes(httplib::Server& server)
                 "(user_id, simulation_name, grid_rows, grid_cols, "
                 "robot_count, result) VALUES (?, ?, ?, ?, ?, ?);";
 
-            result = sqlite3_prepare_v2(
-                db, insertSql, -1, &statement, NULL);
+            
+result = sqlite3_prepare_v2(
+    db, insertSql, -1, &statement, NULL
+);
 
-            if (result == SQLITE_OK)
-            {
-                sqlite3_bind_int64(statement, 1, userId);
-                sqlite3_bind_text(statement, 2, simulationName.c_str(),
-                                  -1, SQLITE_TRANSIENT);
-                sqlite3_bind_int(statement, 3, rows);
-                sqlite3_bind_int(statement, 4, cols);
-                sqlite3_bind_int(statement, 5, robotCount);
-                sqlite3_bind_text(statement, 6, simulationResult.c_str(),
-                                  -1, SQLITE_TRANSIENT);
-                result = sqlite3_step(statement);
-            }
+if (result == SQLITE_OK)
+{
+    result = sqlite3_bind_int64(statement, 1, userId);
 
-            sqlite3_int64 historyId = sqlite3_last_insert_rowid(db);
-            sqlite3_finalize(statement);
-            sqlite3_close(db);
+    if (result == SQLITE_OK)
+        result = sqlite3_bind_text(
+            statement, 2, simulationName.c_str(),
+            -1, SQLITE_TRANSIENT
+        );
 
-            if (result != SQLITE_DONE)
-            {
-                res.status = 500;
-                res.set_content(
-                    R"({"error":"Could not save simulation history."})",
-                    "application/json");
-                return;
-            }
+    if (result == SQLITE_OK)
+        result = sqlite3_bind_int(statement, 3, rows);
+
+    if (result == SQLITE_OK)
+        result = sqlite3_bind_int(statement, 4, cols);
+
+    if (result == SQLITE_OK)
+        result = sqlite3_bind_int(statement, 5, robotCount);
+
+    if (result == SQLITE_OK)
+        result = sqlite3_bind_text(
+            statement, 6, simulationResult.c_str(),
+            -1, SQLITE_TRANSIENT
+        );
+
+    if (result == SQLITE_OK)
+        result = sqlite3_step(statement);
+}
+
+sqlite3_int64 historyId = 0;
+
+if (result == SQLITE_DONE)
+    historyId = sqlite3_last_insert_rowid(db);
+
+sqlite3_finalize(statement);
+
+if (result != SQLITE_DONE)
+{
+    cerr << "Failed to save simulation history: "
+         << sqlite3_errmsg(db) << endl;
+
+    res.status = 500;
+    res.set_content(
+        R"({"error":"Could not save simulation history."})",
+        "application/json"
+    );
+    return;
+}
 
             json responseData = {
                 {"message", "Simulation history saved."},
@@ -189,8 +257,19 @@ void registerSimulationHistoryRoutes(httplib::Server& server)
                 return;
             }
 
-            string token = authHeader.substr(7);
-            string tokenHash = hashSessionToken(token);
+           string token = authHeader.substr(7);
+
+if (!isValidHistorySessionToken(token))
+{
+    res.status = 401;
+    res.set_content(
+        R"({"error":"Invalid session token."})",
+        "application/json"
+    );
+    return;
+}
+
+string tokenHash = hashSessionToken(token);
             sqlite3* db = NULL;
 
             if (!openDatabase(&db))
@@ -202,99 +281,158 @@ void registerSimulationHistoryRoutes(httplib::Server& server)
                     "application/json");
                 return;
             }
+            DatabaseGuard dbGuard(db);
 
             const char* sessionSql =
                 "SELECT user_id FROM sessions "
                 "WHERE id = ? AND expires_at > ?;";
 
             sqlite3_stmt* statement = NULL;
-            int result = sqlite3_prepare_v2(
-                db, sessionSql, -1, &statement, NULL);
 
-            if (result == SQLITE_OK)
-            {
-                sqlite3_bind_text(statement, 1, tokenHash.c_str(),
-                                  -1, SQLITE_TRANSIENT);
-                sqlite3_bind_int64(statement, 2,
-                    static_cast<sqlite3_int64>(time(NULL)));
-                result = sqlite3_step(statement);
-            }
+int result = sqlite3_prepare_v2(
+    db, sessionSql, -1, &statement, NULL
+);
+
+if (result == SQLITE_OK)
+{
+    result = sqlite3_bind_text(
+        statement, 1, tokenHash.c_str(),
+        -1, SQLITE_TRANSIENT
+    );
+
+    if (result == SQLITE_OK)
+    {
+        result = sqlite3_bind_int64(
+            statement, 2,
+            static_cast<sqlite3_int64>(time(NULL))
+        );
+    }
+
+    if (result == SQLITE_OK)
+        result = sqlite3_step(statement);
+}
+
 
             if (result != SQLITE_ROW)
-            {
-                sqlite3_finalize(statement);
-                sqlite3_close(db);
+{
+    if (result != SQLITE_DONE)
+    {
+        cerr << "History session lookup failed: "
+             << sqlite3_errmsg(db) << endl;
+    }
 
-                res.status = (result == SQLITE_DONE) ? 401 : 500;
-                res.set_content(
-                    result == SQLITE_DONE
-                        ? R"({"error":"Invalid or expired session."})"
-                        : R"({"error":"Session lookup failed."})",
-                    "application/json");
-                return;
-            }
+    if (statement != NULL)
+        sqlite3_finalize(statement);
+
+    if (result == SQLITE_DONE)
+    {
+        res.status = 401;
+        res.set_content(
+            R"({"error":"Invalid or expired session."})",
+            "application/json"
+        );
+    }
+    else
+    {
+        res.status = 500;
+        res.set_content(
+            R"({"error":"Session lookup failed."})",
+            "application/json"
+        );
+    }
+
+    return;
+}
 
             sqlite3_int64 userId = sqlite3_column_int64(statement, 0);
             sqlite3_finalize(statement);
 
-            const char* historySql =
-                "SELECT id, simulation_name, grid_rows, grid_cols, "
-                "robot_count, result, created_at "
-                "FROM simulation_history "
-                "WHERE user_id = ? ORDER BY id DESC;";
+           
+const char* historySql =
+    "SELECT id, simulation_name, grid_rows, grid_cols, "
+    "robot_count, result, created_at "
+    "FROM simulation_history "
+    "WHERE user_id = ? ORDER BY id DESC;";
 
-            result = sqlite3_prepare_v2(
-                db, historySql, -1, &statement, NULL);
+result = sqlite3_prepare_v2(
+    db, historySql, -1, &statement, NULL
+);
 
-            if (result != SQLITE_OK)
-            {
-                sqlite3_close(db);
-                res.status = 500;
-                res.set_content(
-                    R"({"error":"Could not retrieve simulation history."})",
-                    "application/json");
-                return;
-            }
+if (result != SQLITE_OK)
+{
+    cerr << "History query preparation failed: "
+         << sqlite3_errmsg(db) << endl;
 
-            sqlite3_bind_int64(statement, 1, userId);
-            json history = json::array();
+    res.status = 500;
+    res.set_content(
+        R"({"error":"Could not retrieve simulation history."})",
+        "application/json"
+    );
+    return;
+}
 
-            while ((result = sqlite3_step(statement)) == SQLITE_ROW)
-            {
-                const unsigned char* name = sqlite3_column_text(statement, 1);
-                const unsigned char* simulationResult =
-                    sqlite3_column_text(statement, 5);
-                const unsigned char* createdAt =
-                    sqlite3_column_text(statement, 6);
+result = sqlite3_bind_int64(statement, 1, userId);
 
-                history.push_back({
-                    {"id", sqlite3_column_int64(statement, 0)},
-                    {"simulation_name", name != NULL
-                        ? reinterpret_cast<const char*>(name) : ""},
-                    {"grid_rows", sqlite3_column_int(statement, 2)},
-                    {"grid_cols", sqlite3_column_int(statement, 3)},
-                    {"robot_count", sqlite3_column_int(statement, 4)},
-                    {"result", simulationResult != NULL
-                        ? reinterpret_cast<const char*>(simulationResult) : ""},
-                    {"created_at", createdAt != NULL
-                        ? reinterpret_cast<const char*>(createdAt) : ""}
-                });
-            }
+if (result != SQLITE_OK)
+{
+    cerr << "History query binding failed: "
+         << sqlite3_errmsg(db) << endl;
 
-            sqlite3_finalize(statement);
-            sqlite3_close(db);
+    sqlite3_finalize(statement);
 
-            if (result != SQLITE_DONE)
-            {
-                res.status = 500;
-                res.set_content(
-                    R"({"error":"Failed while reading simulation history."})",
-                    "application/json");
-                return;
-            }
+    res.status = 500;
+    res.set_content(
+        R"({"error":"Could not retrieve simulation history."})",
+        "application/json"
+    );
+    return;
+}
 
-            res.status = 200;
-            res.set_content(history.dump(4), "application/json");
+json history = json::array();
+
+while ((result = sqlite3_step(statement)) == SQLITE_ROW)
+{
+    const unsigned char* name =
+        sqlite3_column_text(statement, 1);
+
+    const unsigned char* simulationResult =
+        sqlite3_column_text(statement, 5);
+
+    const unsigned char* createdAt =
+        sqlite3_column_text(statement, 6);
+
+    history.push_back({
+        {"id", sqlite3_column_int64(statement, 0)},
+        {"simulation_name", name != NULL
+            ? reinterpret_cast<const char*>(name) : ""},
+        {"grid_rows", sqlite3_column_int(statement, 2)},
+        {"grid_cols", sqlite3_column_int(statement, 3)},
+        {"robot_count", sqlite3_column_int(statement, 4)},
+        {"result", simulationResult != NULL
+            ? reinterpret_cast<const char*>(simulationResult) : ""},
+        {"created_at", createdAt != NULL
+            ? reinterpret_cast<const char*>(createdAt) : ""}
+    });
+}
+
+sqlite3_finalize(statement);
+
+if (result != SQLITE_DONE)
+{
+    cerr << "History retrieval failed: "
+         << sqlite3_errmsg(db) << endl;
+
+    res.status = 500;
+    res.set_content(
+        R"({"error":"Failed while reading simulation history."})",
+        "application/json"
+    );
+    return;
+}
+
+res.status = 200;
+res.set_content(history.dump(4), "application/json");
+
         }
     );
 }

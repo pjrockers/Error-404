@@ -11,7 +11,19 @@
 
 using namespace std;
 using json = nlohmann::json;
+bool isValidSessionToken(const string& token)
+{
+    if (token.length() != 64)
+        return false;
 
+    for (unsigned char ch : token)
+    {
+        if (!isxdigit(ch))
+            return false;
+    }
+
+    return true;
+}
 void registerAuthRoutes(httplib::Server& server)
 {
     // User registration endpoint
@@ -34,6 +46,7 @@ if (!openDatabase(&db))
     );
     return;
 }
+DatabaseGuard dbGuard(db);
             json requestData;
 
             try
@@ -128,20 +141,23 @@ if (!openDatabase(&db))
             );
 
             if (result == SQLITE_OK)
-            {
-                sqlite3_bind_text(
-                    statement, 1, username.c_str(),
-                    -1, SQLITE_TRANSIENT
-                );
+{
+    result = sqlite3_bind_text(
+        statement, 1, username.c_str(),
+        -1, SQLITE_TRANSIENT
+    );
 
-                sqlite3_bind_text(
-                    statement, 2, passwordHash,
-                    -1, SQLITE_TRANSIENT
-                );
+    if (result == SQLITE_OK)
+    {
+        result = sqlite3_bind_text(
+            statement, 2, passwordHash,
+            -1, SQLITE_TRANSIENT
+        );
+    }
 
-                result = sqlite3_step(statement);
-            }
-
+    if (result == SQLITE_OK)
+        result = sqlite3_step(statement);
+}
             if (result == SQLITE_DONE)
             {
                 res.status = 201;
@@ -172,7 +188,6 @@ if (!openDatabase(&db))
 
             if (statement != NULL)
                 sqlite3_finalize(statement);
-            sqlite3_close(db);
         }
     );
 
@@ -196,6 +211,7 @@ if (!openDatabase(&db))
     );
     return;
 }
+DatabaseGuard dbGuard(db);
             json requestData;
 
             try
@@ -262,12 +278,13 @@ if (!openDatabase(&db))
                 return;
             }
 
-            sqlite3_bind_text(
-                statement, 1, username.c_str(),
-                -1, SQLITE_TRANSIENT
-            );
+           result = sqlite3_bind_text(
+    statement, 1, username.c_str(),
+    -1, SQLITE_TRANSIENT
+);
 
-            result = sqlite3_step(statement);
+if (result == SQLITE_OK)
+    result = sqlite3_step(statement);
 
             bool authenticated = false;
             sqlite3_int64 userId = 0;
@@ -291,7 +308,18 @@ if (!openDatabase(&db))
             }
 
             sqlite3_finalize(statement);
+            if (result != SQLITE_ROW && result != SQLITE_DONE)
+{
+    cerr << "Login query failed: "
+         << sqlite3_errmsg(db) << endl;
 
+    res.status = 500;
+    res.set_content(
+        R"({"error":"Database query failed."})",
+        "application/json"
+    );
+    return;
+}
             if (!authenticated)
             {
                 res.status = 401;
@@ -329,24 +357,29 @@ if (!openDatabase(&db))
                 db, insertSql, -1, &statement, NULL
             );
 
-            if (result == SQLITE_OK)
-            {
-                sqlite3_bind_text(
-                    statement, 1, tokenHashHex.c_str(),
-                    -1, SQLITE_TRANSIENT
-                );
+           if (result == SQLITE_OK)
+{
+    result = sqlite3_bind_text(
+        statement, 1, tokenHashHex.c_str(),
+        -1, SQLITE_TRANSIENT
+    );
 
-                sqlite3_bind_int64(statement, 2, userId);
-                sqlite3_bind_int64(statement, 3, expiresAt);
+    if (result == SQLITE_OK)
+        result = sqlite3_bind_int64(statement, 2, userId);
 
-                result = sqlite3_step(statement);
-            }
+    if (result == SQLITE_OK)
+        result = sqlite3_bind_int64(statement, 3, expiresAt);
 
+    if (result == SQLITE_OK)
+        result = sqlite3_step(statement);
+}
             if (statement != NULL)
                 sqlite3_finalize(statement);
 
             if (result != SQLITE_DONE)
             {
+                cerr << "Session creation failed: "
+     << sqlite3_errmsg(db) << endl;
                 res.status = 500;
                 res.set_content(
                     R"({"error":"Could not create session."})",
@@ -363,7 +396,6 @@ if (!openDatabase(&db))
 
             res.status = 200;
             res.set_content(responseData.dump(), "application/json");
-            sqlite3_close(db);
         }
     );
 
@@ -375,7 +407,7 @@ if (!openDatabase(&db))
         {
             sqlite3* db = NULL;
 
-if (sqlite3_open("robotswarm.db", &db) != SQLITE_OK)
+if (!openDatabase(&db))
 {
     if (db != NULL)
         sqlite3_close(db);
@@ -387,6 +419,7 @@ if (sqlite3_open("robotswarm.db", &db) != SQLITE_OK)
     );
     return;
 }
+DatabaseGuard dbGuard(db);
             string authHeader =
                 req.get_header_value("Authorization");
 
@@ -402,7 +435,18 @@ if (sqlite3_open("robotswarm.db", &db) != SQLITE_OK)
             }
 
             string token = authHeader.substr(7);
-            string tokenHash = hashSessionToken(token);
+
+if (!isValidSessionToken(token))
+{
+    res.status = 401;
+    res.set_content(
+        R"({"error":"Invalid session token."})",
+        "application/json"
+    );
+    return;
+}
+
+string tokenHash = hashSessionToken(token);
 
             const char* sql =
                 "SELECT users.id, users.username "
@@ -429,17 +473,21 @@ if (sqlite3_open("robotswarm.db", &db) != SQLITE_OK)
                 return;
             }
 
-            sqlite3_bind_text(
-                statement, 1, tokenHash.c_str(),
-                -1, SQLITE_TRANSIENT
-            );
+            result = sqlite3_bind_text(
+    statement, 1, tokenHash.c_str(),
+    -1, SQLITE_TRANSIENT
+);
 
-            sqlite3_bind_int64(
-                statement, 2,
-                static_cast<sqlite3_int64>(time(NULL))
-            );
+if (result == SQLITE_OK)
+{
+    result = sqlite3_bind_int64(
+        statement, 2,
+        static_cast<sqlite3_int64>(time(NULL))
+    );
+}
 
-            result = sqlite3_step(statement);
+if (result == SQLITE_OK)
+    result = sqlite3_step(statement);
 
             if (result == SQLITE_ROW)
             {
@@ -478,16 +526,18 @@ if (sqlite3_open("robotswarm.db", &db) != SQLITE_OK)
                 );
             }
             else
-            {
-                sqlite3_finalize(statement);
+        {
+    cerr << "Session lookup failed: "
+         << sqlite3_errmsg(db) << endl;
 
-                res.status = 500;
-                res.set_content(
-                    R"({"error":"Session lookup failed."})",
-                    "application/json"
-                );
-            }
-            sqlite3_close(db);
+    sqlite3_finalize(statement);
+
+    res.status = 500;
+    res.set_content(
+        R"({"error":"Session lookup failed."})",
+        "application/json"
+    );
+}
         }
     );
 
@@ -498,7 +548,7 @@ if (sqlite3_open("robotswarm.db", &db) != SQLITE_OK)
         {
             sqlite3* db = NULL;
 
-if (sqlite3_open("robotswarm.db", &db) != SQLITE_OK)
+if (!openDatabase(&db))
 {
     if (db != NULL)
         sqlite3_close(db);
@@ -510,6 +560,7 @@ if (sqlite3_open("robotswarm.db", &db) != SQLITE_OK)
     );
     return;
 }
+DatabaseGuard dbGuard(db);
             string authHeader =
                 req.get_header_value("Authorization");
 
@@ -525,7 +576,18 @@ if (sqlite3_open("robotswarm.db", &db) != SQLITE_OK)
             }
 
             string token = authHeader.substr(7);
-            string tokenHash = hashSessionToken(token);
+
+if (!isValidSessionToken(token))
+{
+    res.status = 401;
+    res.set_content(
+        R"({"error":"Invalid session token."})",
+        "application/json"
+    );
+    return;
+}
+
+string tokenHash = hashSessionToken(token);
 
             const char* sql =
                 "DELETE FROM sessions "
@@ -537,35 +599,41 @@ if (sqlite3_open("robotswarm.db", &db) != SQLITE_OK)
                 db, sql, -1, &statement, NULL
             );
 
-            if (result == SQLITE_OK)
-            {
-                sqlite3_bind_text(
-                    statement, 1, tokenHash.c_str(),
-                    -1, SQLITE_TRANSIENT
-                );
+           if (result == SQLITE_OK)
+{
+    result = sqlite3_bind_text(
+        statement, 1, tokenHash.c_str(),
+        -1, SQLITE_TRANSIENT
+    );
 
-                sqlite3_bind_int64(
-                    statement, 2,
-                    static_cast<sqlite3_int64>(time(NULL))
-                );
+    if (result == SQLITE_OK)
+    {
+        result = sqlite3_bind_int64(
+            statement, 2,
+            static_cast<sqlite3_int64>(time(NULL))
+        );
+    }
 
-                result = sqlite3_step(statement);
-            }
-
-            int deleted = sqlite3_changes(db);
+    if (result == SQLITE_OK)
+        result = sqlite3_step(statement);
+}
 
             if (statement != NULL)
                 sqlite3_finalize(statement);
 
             if (result != SQLITE_DONE)
-            {
-                res.status = 500;
-                res.set_content(
-                    R"({"error":"Logout failed."})",
-                    "application/json"
-                );
-                return;
-            }
+{
+    cerr << "Logout failed: "
+         << sqlite3_errmsg(db) << endl;
+
+    res.status = 500;
+    res.set_content(
+        R"({"error":"Logout failed."})",
+        "application/json"
+    );
+    return;
+}
+             int deleted = sqlite3_changes(db);
 
             if (deleted == 0)
             {
@@ -582,7 +650,6 @@ if (sqlite3_open("robotswarm.db", &db) != SQLITE_OK)
                 R"({"message":"Logout successful."})",
                 "application/json"
             );
-            sqlite3_close(db);
         }
     );
 }

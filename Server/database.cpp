@@ -5,6 +5,7 @@
 #include <iostream>
 
 using namespace std;
+
 bool openDatabase(sqlite3** db)
 {
     if (db == NULL)
@@ -12,21 +13,29 @@ bool openDatabase(sqlite3** db)
 
     *db = NULL;
 
-    if (sqlite3_open("robotswarm.db", db) != SQLITE_OK)
+    int result = sqlite3_open("robotswarm.db", db);
+
+    if (result != SQLITE_OK)
     {
         if (*db != NULL)
         {
+            cerr << "Database connection failed: "
+                 << sqlite3_errmsg(*db) << endl;
+
             sqlite3_close(*db);
             *db = NULL;
+        }
+        else
+        {
+            cerr << "Database connection failed." << endl;
         }
 
         return false;
     }
 
-    // Enable foreign-key enforcement on this connection.
     char* errorMessage = NULL;
 
-    int result = sqlite3_exec(
+    result = sqlite3_exec(
         *db,
         "PRAGMA foreign_keys = ON;",
         NULL,
@@ -34,17 +43,26 @@ bool openDatabase(sqlite3** db)
         &errorMessage
     );
 
-    sqlite3_free(errorMessage);
-
     if (result != SQLITE_OK)
     {
+        cerr << "Failed to enable foreign keys: "
+             << (errorMessage != NULL
+                     ? errorMessage
+                     : sqlite3_errmsg(*db))
+             << endl;
+
+        sqlite3_free(errorMessage);
         sqlite3_close(*db);
         *db = NULL;
+
         return false;
     }
 
+    sqlite3_free(errorMessage);
+
     return true;
 }
+
 bool initializeDatabase()
 {
     sqlite3* db = NULL;
@@ -86,6 +104,24 @@ bool initializeDatabase()
         "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
         "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
         ");"
+
+        
+        "CREATE TABLE IF NOT EXISTS robots ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "user_id INTEGER NOT NULL,"
+        "name TEXT NOT NULL,"
+        "robot_type TEXT NOT NULL,"
+        "x INTEGER NOT NULL DEFAULT 0,"
+        "y INTEGER NOT NULL DEFAULT 0,"
+        "battery REAL NOT NULL DEFAULT 100,"
+        "speed REAL NOT NULL DEFAULT 5,"
+        "priority INTEGER NOT NULL DEFAULT 1,"
+        "status TEXT NOT NULL DEFAULT 'Idle',"
+        "attributes TEXT,"
+        "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+        "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+        ");"
+
 
         "CREATE TABLE IF NOT EXISTS simulation_history ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"

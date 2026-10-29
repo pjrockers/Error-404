@@ -4,6 +4,7 @@
 #include <ctime>
 #include <cmath>
 #include <stdexcept>
+#include "robots.h"
 #include "auth.h"
 #include "database.h"
 #include "simulation_history.h"
@@ -52,6 +53,7 @@ int main()
     registerAuthRoutes(server);
     registerRobotTemplateRoutes(server);
     registerSimulationHistoryRoutes(server);
+    registerRobotRoutes(server);
     // Home endpoint
     server.Get("/",
         [](const httplib::Request& req,

@@ -151,13 +151,48 @@ bool isCellOccupied(
 }
 
 void SwarmManager::runSimulation()
-{
+{  const string commandPath = "C:/roboSwarmBridge/command.txt";
+    // Clear any leftover command from a previous run.
+    {
+        ofstream clearFile(commandPath.c_str(), ios::trunc);
+        clearFile.close();
+    }
+    cout << "\nWaiting for Godot Start button...\n";
+    cout << "Press Start in Godot to begin the simulation.\n";
+
+    while (true)
+    {
+        ifstream file(commandPath.c_str());
+        string command;
+
+        if (file.is_open())
+        {
+            getline(file, command);
+           
+            file.close();
+
+            // Start simulation only when Godot sends START.
+            if (command == "START")
+            {
+                ofstream clearFile(commandPath.c_str(), ios::trunc);
+                clearFile.close();
+
+                cout << "\nGodot START received!\n";
+                cout << "Starting swarm simulation...\n";
+                break;
+            }
+        }
+
+        Sleep(100);
+    }
     Pathfinder finder;
 
     //json writing 
     
     // Export current robot states for Godot.
-    auto exportRobotState = [this]()
+    auto exportRobotState = [this](
+    const string& status,
+    const string& errorMessage)
     {
         ofstream file("C:/roboSwarmBridge/robot_state.json");
 
@@ -172,6 +207,28 @@ void SwarmManager::runSimulation()
         file << "    \"rows\": " << map.getRows() << ",\n";
         file << "    \"cols\": " << map.getCols() << "\n";
         file << "  },\n";
+        file << "  \"obstacles\": [\n";
+
+        bool firstObstacle = true;
+
+        for (int y = 0; y < map.getRows(); y++)
+        {
+            for (int x = 0; x < map.getCols(); x++)
+            {
+                if (map.isObstacle(x, y))
+                {
+                    if (!firstObstacle)
+                        file << ",\n";
+
+                    file << "    {\"x\": " << x
+                        << ", \"y\": " << y << "}";
+
+                    firstObstacle = false;
+                }
+            }
+        }
+
+        file << "\n  ],\n";
         file << "  \"robots\": [\n";
 
         for (size_t i = 0; i < robots.size(); i++)
@@ -180,6 +237,11 @@ void SwarmManager::runSimulation()
             
 
             file << "    {\n";
+            file << "  \"simulation_status\": \""
+                << status << "\",\n";
+
+            file << "  \"error_message\": \""
+                << errorMessage << "\",\n";
             file << "      \"id\": " << robot->getID() << ",\n";
             file << "      \"x\": " << robot->getX() << ",\n";
             file << "      \"y\": " << robot->getY() << ",\n";
@@ -203,7 +265,7 @@ void SwarmManager::runSimulation()
 
     cout << "\n===== STARTING SWARM SIMULATION =====\n";
 
-    exportRobotState(); //json shit
+    exportRobotState("running", ""); //json shit
 
     const int MAX_STEPS = 1000;
     int blockedRetryCount = 0;
@@ -287,9 +349,13 @@ sort(order.begin(), order.end(),
             return priorityA > priorityB;
         }
 
-        // If effective priorities are equal,
-        // prefer the robot with the higher original priority.
-        return a->getPriority() > b->getPriority();
+        if (a->getPriority() != b->getPriority())
+        {
+            return a->getPriority() > b->getPriority();
+        }
+
+        // Consistent tie-breaker.
+        return a->getID() < b->getID();
     });
 
 
@@ -376,13 +442,13 @@ while (robotIndex < static_cast<int>(robots.size()) &&
             {
                 robot->setStatus("Waiting");
                 waitCounters[robotIndex]++;
-                if (waitCounters[robotIndex] >= 3)
-{
-    cout << "Warning: Robot " << robot->getID()
-         << " has been waiting for "
-         << waitCounters[robotIndex]
-         << " consecutive steps.\n";
-}
+            if (waitCounters[robotIndex] >= 3)
+            {
+                cout << "WARNING: Robot " << robot->getID()
+                    << " may be deadlocked after waiting for "
+                    << waitCounters[robotIndex]
+                    << " consecutive steps.\n";
+            }
 
                 cout << "Robot " << robot->getID()
                      << " is waiting: no usable route "
@@ -393,19 +459,33 @@ while (robotIndex < static_cast<int>(robots.size()) &&
             int nextX = path[1].first;
             int nextY = path[1].second;
 
+            // Safety check: the next cell must be inside the grid
+            // and must not contain a real obstacle.
+            if (!map.isWalkable(nextX, nextY))
+            {
+                robot->setStatus("Waiting");
+                waitCounters[robotIndex]++;
+
+                cout << "Robot " << robot->getID()
+                    << " blocked: next cell ("
+                    << nextX << ", " << nextY
+                    << ") is outside the grid or contains an obstacle.\n";
+
+                continue;
+            }
+
             // Never enter a cell occupied by another robot.
-            if (isCellOccupied(
-                    robots, nextX, nextY, robot))
+            if (isCellOccupied(robots, nextX, nextY, robot))
             {
                 robot->setStatus("Waiting");
                 waitCounters[robotIndex]++;
                 if (waitCounters[robotIndex] >= 3)
-{
-    cout << "Warning: Robot " << robot->getID()
-         << " has been waiting for "
-         << waitCounters[robotIndex]
-         << " consecutive steps.\n";
-}
+                {
+                    cout << "Warning: Robot " << robot->getID()
+                        << " has been waiting for "
+                        << waitCounters[robotIndex]
+                        << " consecutive steps.\n";
+                }
 
                 cout << "Robot " << robot->getID()
                      << " is waiting: next cell ("
@@ -415,10 +495,10 @@ while (robotIndex < static_cast<int>(robots.size()) &&
             }
 
             if (robot->moveToNextCell(nextX, nextY))
-{
-    anyMoved = true;
-    waitCounters[robotIndex] = 0;
-    robot->consumeBattery(1);
+            {
+                anyMoved = true;
+                waitCounters[robotIndex] = 0;
+                robot->consumeBattery(1);
 
                 cout << "Battery remaining: "
                      << robot->getBattery() << "%\n";
@@ -441,18 +521,18 @@ while (robotIndex < static_cast<int>(robots.size()) &&
                 robot->setStatus("Waiting");
                 waitCounters[robotIndex]++;
                 if (waitCounters[robotIndex] >= 3)
-{
-    cout << "Warning: Robot " << robot->getID()
-         << " has been waiting for "
-         << waitCounters[robotIndex]
-         << " consecutive steps.\n";
-}
+                {
+                    cout << "Warning: Robot " << robot->getID()
+                        << " has been waiting for "
+                        << waitCounters[robotIndex]
+                        << " consecutive steps.\n";
+                }
 
                 cout << "Robot " << robot->getID()
                      << " could not move to the next cell.\n";
             }
         }
-        exportRobotState();//json 
+        exportRobotState("running", "");//json 
         Sleep(500); // json 
         if (allFinished)
         {

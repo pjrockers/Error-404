@@ -13,6 +13,7 @@ var robot_battery_labels: Dictionary = {}
 var grid_rows: int = 20
 var grid_cols: int = 20
 var robot_nodes: Array[Node3D] = []
+var last_robot_grid_positions: Dictionary = {}
 var robot_template: Node3D
 
 var simulation_running = false
@@ -22,6 +23,7 @@ var robot_battery = 100.0
 var battery_drain_rate = 2.0
 
 func _ready():
+
 	for node in get_children():
 		if node is Node3D and node.name.to_lower().begins_with("robot"):
 			if not robot_nodes.has(node):
@@ -48,6 +50,7 @@ func _process(delta):
 
 
 func _on_button_start_pressed():
+	print("START HANDLER CALLED AT: ", Time.get_ticks_msec())
 	var file = FileAccess.open(
 		"C:/roboSwarmBridge/command.txt",
 		FileAccess.WRITE
@@ -201,10 +204,40 @@ func update_robots_from_cpp():
 		return
 
 	var data = json.data
-	
-	if data is Dictionary and data.has("obstacles"):
-		if data["obstacles"] is Array:
-			update_obstacles_from_json(data["obstacles"])
+
+	if not data is Dictionary:
+		push_warning("Invalid JSON dictionary.")
+		return
+	# Display validation errors received from C++.
+	var sim_status = str(
+	data.get("simulation_status", "ready")
+	)
+
+	if sim_status == "route_error":
+		simulation_running = false
+		
+		var error_message = str(
+			data.get("error_message", "Route validation failed.")
+	)
+
+		update_status(error_message)
+		print("SIMULATION ERROR: ", error_message)
+# Read grid dimensions FIRST.
+	if data.has("grid") and data["grid"] is Dictionary:
+		grid_rows = int(data["grid"].get("rows", grid_rows))
+		grid_cols = int(data["grid"].get("cols", grid_cols))
+
+	# Resize the floor to match the C++ grid.
+		if floor_node != null:
+			var plane := floor_node.mesh as PlaneMesh
+			if plane != null:
+				plane.size = Vector2(grid_cols, grid_rows)
+			else:
+				push_warning("The floor mesh is not a PlaneMesh.")
+
+# Now place obstacles using the updated grid dimensions.
+	if data.has("obstacles") and data["obstacles"] is Array:
+		update_obstacles_from_json(data["obstacles"])
 	
 	if not data is Dictionary or not data.has("robots"):
 		push_warning("JSON has no valid robots dictionary.")
@@ -218,10 +251,6 @@ func update_robots_from_cpp():
 
 	var robot_data: Array = data["robots"]
 
-	# Read grid dimensions.
-	if data.has("grid") and data["grid"] is Dictionary:
-		grid_rows = int(data["grid"].get("rows", grid_rows))
-		grid_cols = int(data["grid"].get("cols", grid_cols))
 
 	# Synchronize Godot robot visuals with the JSON robot count.
 	sync_robot_nodes(robot_data.size())
@@ -264,20 +293,32 @@ func update_robots_from_cpp():
 					cpp_robot["battery"]
 				)
 
-		# Update the robot's CURRENT world position.
+		
+		
+		# Update robot visual using the latest C++ coordinates.
 		if cpp_robot.has("x") and cpp_robot.has("y"):
-			var grid_x = int(cpp_robot["x"])
-			var grid_y = int(cpp_robot["y"])
+			var grid_x: int = int(cpp_robot["x"])
+			var grid_y: int = int(cpp_robot["y"])
 
 			if (
 				grid_x >= 0 and grid_x < grid_cols
 				and grid_y >= 0 and grid_y < grid_rows
 			):
-				if floor_node != null:
-					node.global_position = grid_to_world(
-						grid_x,
-						grid_y
+				if floor_node == null:
+					push_error("floor_node is not assigned in the Inspector.")
+				else:
+					var new_position: Vector3 = grid_to_world(
+						grid_x, grid_y
 					)
+
+					print(
+						"Robot ", robot_id,
+						" | Grid: ", grid_x, ",", grid_y,
+						" | World: ", new_position,
+						" | Visual: ", node.name
+					)
+
+					node.global_position = new_position
 
 		# Read the robot's DESTINATION coordinates.
 		var dest_x = int(cpp_robot.get("dest_x", 0))
@@ -329,7 +370,7 @@ func update_obstacles_from_json(obstacles: Array) -> void:
 		visual.name = "Obstacle_%d_%d" % [x, y]
 
 		var obstacle_mesh := BoxMesh.new()
-		obstacle_mesh.size = Vector3(0.8, 1.0, 0.8)
+		obstacle_mesh.size = Vector3(0.8, 0.4, 0.8)
 		visual.mesh = obstacle_mesh
 
 		var material := StandardMaterial3D.new()

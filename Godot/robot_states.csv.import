@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://dd3bo5v2k7qlp"
+
+[deps]
+
+files=["res://robot_states.name.translation", "res://robot_states.type.translation", "res://robot_states.x.translation", "res://robot_states.y.translation", "res://robot_states.destX.translation", "res://robot_states.destY.translation", "res://robot_states.battery.translation", "res://robot_states.speed.translation", "res://robot_states.priority.translation", "res://robot_states.status.translation"]
+
+source_file="res://robot_states.csv"
+dest_files=["res://robot_states.name.translation", "res://robot_states.type.translation", "res://robot_states.x.translation", "res://robot_states.y.translation", "res://robot_states.destX.translation", "res://robot_states.destY.translation", "res://robot_states.battery.translation", "res://robot_states.speed.translation", "res://robot_states.priority.translation", "res://robot_states.status.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

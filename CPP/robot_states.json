@@ -2,7 +2,7 @@
   "robots": [
     {
       "id": 1,
-      "name": "rrr",
+      "name": "rr",
       "type": "General",
       "x": 4,
       "y": 3,
@@ -15,7 +15,7 @@
     },
     {
       "id": 2,
-      "name": "yyy",
+      "name": "rrf",
       "type": "General",
       "x": 4,
       "y": 1,

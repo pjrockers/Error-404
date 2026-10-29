@@ -1,0 +1,21 @@
+<<<<<<< HEAD
+# Godot 4+ specific ignores
+.godot/
+/android/
+=======
+# Compiled C++ files
+*.exe
+*.o
+*.obj
+*.out
+
+# Godot generated files
+Godot/.godot/
+
+# IDE settings
+.vscode/
+.idea/
+
+# Environment variables and secrets
+.env
+>>>>>>> origin/main

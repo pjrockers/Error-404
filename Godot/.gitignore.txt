@@ -1,0 +1,9 @@
+# Godot generated cache
+.godot/
+
+# Godot imported assets cache
+.import/
+
+# Temporary files
+*.tmp
+*.bak

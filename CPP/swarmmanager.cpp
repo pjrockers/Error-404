@@ -21,6 +21,7 @@ using std::vector;
 using std::string;
 using std::ostream;
 using namespace std;
+const double BATTERY_CONSUMPTION_RATE = 0.5;
 
 namespace
 {
@@ -394,26 +395,37 @@ bool SwarmManager::runSimulationStep()
 
     bool allFinished = true;
     bool anyMoved = false;
+vector<Robot*> order = robots;
+// Store cells reserved by robots that have already
+// been processed during this simulation step.
+vector<pair<int, int> > reservedCells;
 
-    // Highest effective priority moves first.
-    vector<Robot*> order = robots;
+sort(order.begin(), order.end(),
+    [this](Robot* a, Robot* b)
+    {
+        int priorityA = effectivePriority(a);
+        int priorityB = effectivePriority(b);
 
-    sort(order.begin(), order.end(),
-        [this](Robot* a, Robot* b)
-        {
-            int priorityA = effectivePriority(a);
-            int priorityB = effectivePriority(b);
+        if (priorityA != priorityB)
+            return priorityA > priorityB;
 
-            if (priorityA != priorityB)
-                return priorityA > priorityB;
+        if (a->getPriority() != b->getPriority())
+            return a->getPriority() > b->getPriority();
 
-            if (a->getPriority() != b->getPriority())
-                return a->getPriority() > b->getPriority();
+        if (a->getBattery() != b->getBattery())
+            return a->getBattery() < b->getBattery();
 
-            // Consistent tie-breaker.
-            return a->getID() < b->getID();
-        });
+        return a->getID() < b->getID();
+    });
+cout << "\n--- Robot Movement Order ---\n";
 
+for (Robot* robot : order)
+{
+    cout << robot->getName()
+         << " | Priority: " << robot->getPriority()
+         << " | Battery: " << robot->getBattery()
+         << "%\n";
+}
     log() << "\n--- Simulation Step "
           << currentStep << " ---\n";
 
@@ -470,7 +482,17 @@ bool SwarmManager::runSimulationStep()
                     make_pair(otherX, otherY));
             }
         }
+        // Block cells already reserved by earlier robots this step.
+for (size_t i = 0; i < reservedCells.size(); i++)
+{
+    int x = reservedCells[i].first;
+    int y = reservedCells[i].second;
 
+    if (map.addObstacle(x, y))
+    {
+        temporaryObstacles.push_back(make_pair(x, y));
+    }
+}
         vector<pair<int, int> > path =
             finder.findPath(map, x, y, dx, dy);
 
@@ -501,79 +523,132 @@ bool SwarmManager::runSimulationStep()
                   << "is currently available.\n";
             continue;
         }
+// A robot with no battery cannot move.
+if (!robot->hasBattery())
+{
+    robot->setStatus("Low Battery");
 
-        int nextX = path[1].first;
-        int nextY = path[1].second;
+    log() << "Robot " << robot->getID()
+          << " has no battery and cannot move.\n";
 
-        // Safety check: the next cell must be inside the grid
-        // and must not contain a real obstacle.
-        if (!map.isWalkable(nextX, nextY))
+    continue;
+}
+        // Maximum number of cells this robot can move in one step.
+int maxMoves = static_cast<int>(robot->getSpeed());
+
+if (maxMoves < 1)
+    maxMoves = 1;
+
+bool robotMoved = false;
+bool blocked = false;
+
+for (int moveCount = 1;
+     moveCount < static_cast<int>(path.size()) &&
+     moveCount <= maxMoves;
+     moveCount++)
+{
+    int nextX = path[moveCount].first;
+    int nextY = path[moveCount].second;
+
+    // Check for obstacles.
+    if (!map.isWalkable(nextX, nextY))
+    {
+        blocked = true;
+        break;
+    }
+
+    // Check whether another robot occupies this cell.
+    if (isCellOccupied(robots, nextX, nextY, robot))
+    {
+        blocked = true;
+        break;
+    }
+
+    // Check reservations made by earlier robots.
+    bool reserved = false;
+
+    for (size_t j = 0; j < reservedCells.size(); j++)
+    {
+        if (reservedCells[j].first == nextX &&
+            reservedCells[j].second == nextY)
         {
-            robot->setStatus("Waiting");
-            waitCounters[robotIndex]++;
-
-            log() << "Robot " << robot->getID()
-                  << " blocked: next cell ("
-                  << nextX << ", " << nextY
-                  << ") is outside the grid or contains an obstacle.\n";
-            continue;
+            reserved = true;
+            break;
         }
+    }
 
-        // Never enter a cell occupied by another robot.
-        if (isCellOccupied(robots, nextX, nextY, robot))
-        {
-            robot->setStatus("Waiting");
-            waitCounters[robotIndex]++;
+    if (reserved)
+    {
+        blocked = true;
+        break;
+    }
 
-            if (waitCounters[robotIndex] >= 3)
-            {
-                log() << "Warning: Robot " << robot->getID()
-                      << " has been waiting for "
-                      << waitCounters[robotIndex]
-                      << " consecutive steps.\n";
-            }
+    if (!robot->moveToNextCell(nextX, nextY))
+    {
+        blocked = true;
+        break;
+    }
 
-            log() << "Robot " << robot->getID()
-                  << " is waiting: next cell ("
-                  << nextX << ", " << nextY
-                  << ") is occupied.\n";
-            continue;
-        }
+    robotMoved = true;
+    anyMoved = true;
 
-        if (robot->moveToNextCell(nextX, nextY))
-        {
-            anyMoved = true;
-            waitCounters[robotIndex] = 0;
-            robot->consumeBattery(1);
+    reservedCells.push_back(make_pair(nextX, nextY));
 
-            log() << "Battery remaining: "
-                  << robot->getBattery() << "%\n";
+    waitCounters[robotIndex] = 0;
 
-            log() << "Robot " << robot->getID()
-                  << " moved to ("
-                  << nextX << ", " << nextY << ")\n";
+    // Battery consumption increases with robot speed.
+double batteryUsed =
+    robot->getSpeed() * BATTERY_CONSUMPTION_RATE;
 
-            if (nextX == dx && nextY == dy)
-                robot->setStatus("Arrived");
-            else
-                robot->setStatus("Moving");
-        }
-        else
-        {
-            robot->setStatus("Waiting");
-            waitCounters[robotIndex]++;
+robot->consumeBattery(batteryUsed);
+    log() << "Battery remaining: "
+          << robot->getBattery() << "%\n";
 
-            if (waitCounters[robotIndex] >= 3)
-            {
-                log() << "Warning: Robot " << robot->getID()
-                      << " has been waiting for "
-                      << waitCounters[robotIndex]
-                      << " consecutive steps.\n";
-            }
+    log() << "Robot " << robot->getID()
+          << " moved to (" << nextX
+          << ", " << nextY << ")\n";
 
-            log() << "Robot " << robot->getID()
-                  << " could not move to the next cell.\n";
-        }
+    if (nextX == dx && nextY == dy)
+    {
+        robot->setStatus("Arrived");
+        break;
+    }
+
+    if (!robot->hasBattery())
+    {
+        robot->setStatus("Low Battery");
+        break;
+    }
+}
+
+if (!robotMoved)
+{
+    if (!robot->hasBattery())
+    {
+        robot->setStatus("Low Battery");
+    }
+    else
+    {
+        robot->setStatus("Waiting");
+        waitCounters[robotIndex]++;
+    }
+
+    log() << "Robot " << robot->getID()
+          << " could not move.";
+
+    if (!robot->hasBattery())
+        log() << " Battery depleted.";
+
+    if (blocked)
+        log() << " Next cell is blocked or reserved.";
+
+    log() << "\n";
+}
+else if (robot->getStatus() != "Arrived" &&
+         robot->hasBattery())
+{
+    robot->setStatus("Moving");
+}
     }
 
     if (allFinished)

@@ -112,7 +112,6 @@ string tokenHash = hashSessionToken(token);
 
             if (!openDatabase(&db))
             {
-                if (db != NULL) sqlite3_close(db);
                 res.status = 500;
                 res.set_content(
                     R"({"error":"Database connection failed."})",
@@ -274,7 +273,6 @@ string tokenHash = hashSessionToken(token);
 
             if (!openDatabase(&db))
             {
-                if (db != NULL) sqlite3_close(db);
                 res.status = 500;
                 res.set_content(
                     R"({"error":"Database connection failed."})",

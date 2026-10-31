@@ -6,10 +6,6 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api/simulation': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
@@ -18,4 +14,3 @@ export default defineConfig({
     },
   },
 })
-

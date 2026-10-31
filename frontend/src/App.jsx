@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef  } from "react";
 import Auth from "./Auth";
 import "./App.css";
 import {
@@ -17,6 +17,8 @@ import {
   resumeSimulation,
   resetSimulation,
   getSimulationState,
+  saveSimulationHistory,
+getSimulationHistory,
 } from "./api";
 
 const initialRobots = [
@@ -25,6 +27,7 @@ const initialRobots = [
 ];
 
 function App() {
+const [activePage, setActivePage] = useState("Dashboard");
 const [templates, setTemplates] = useState([]);
 const [templatesLoading, setTemplatesLoading] = useState(false);
 const [templateError, setTemplateError] = useState("");
@@ -41,6 +44,15 @@ const [deletingRobotId, setDeletingRobotId] = useState(null);
   );
   const [user, setUser] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
+  
+  const [simulationStatus, setSimulationStatus] = useState("not_configured");
+
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
+
+  const historySavedRef = useRef(false);
+  const startingPositionsRef = useRef([]);
 
   
   useEffect(() => {
@@ -134,6 +146,28 @@ const [deletingRobotId, setDeletingRobotId] = useState(null);
     setRobotsLoading(false);
   }
 }
+async function loadHistory() {
+  if (!token) return;
+
+  setHistoryLoading(true);
+  setHistoryError("");
+
+  try {
+    const data = await getSimulationHistory(token);
+
+    if (!Array.isArray(data)) {
+      throw new Error("Unexpected history data from server.");
+    }
+
+    setHistory(data);
+  } catch (error) {
+    setHistoryError(
+      error.message || "Could not load simulation history."
+    );
+  } finally {
+    setHistoryLoading(false);
+  }
+}
 async function handleDeleteRobot(id) {
   const confirmed = window.confirm(
     "Are you sure you want to delete this robot?"
@@ -193,6 +227,8 @@ async function handleDeleteRobot(id) {
     }
   }, [token, user]);
 
+ 
+
   useEffect(() => {
   if (token && user) {
     loadRobots();
@@ -226,7 +262,6 @@ function handleEditRobot(robot) {
     }
   }
 
-  const [activePage, setActivePage] = useState("Dashboard");
   const [rows, setRows] = useState(10);
   const [cols, setCols] = useState(10);
   const [robots, setRobots] = useState(initialRobots);
@@ -240,7 +275,6 @@ function handleEditRobot(robot) {
   const [selectedTool, setSelectedTool] = useState("obstacle");
   const [running, setRunning] = useState(false);
   // Real backend simulation state
-const [simulationStatus, setSimulationStatus] = useState("not_configured");
 const [simulationStep, setSimulationStep] = useState(0);
 const [simulationError, setSimulationError] = useState("");
 const [simulationFinished, setSimulationFinished] = useState(false);
@@ -253,7 +287,7 @@ const [robotDestinations, setRobotDestinations] = useState({});
   const [newRobotX, setNewRobotX] = useState(0);
   const [newRobotY, setNewRobotY] = useState(0);
 
-  useEffect(() => {
+useEffect(() => {
   if (!token || !["running", "paused"].includes(simulationStatus)) {
     return;
   }
@@ -264,12 +298,79 @@ const [robotDestinations, setRobotDestinations] = useState({});
     try {
       const data = await getSimulationState(token);
 
+      if (cancelled) return;
+
+      // Save the simulation only once when it finishes.
+      if (
+        data.finished === true &&
+        !historySavedRef.current
+      ) {
+        // Set the guard immediately to prevent duplicate POST requests.
+        historySavedRef.current = true;
+
+        const finalRobots = Array.isArray(data.robots)
+          ? data.robots
+          : [];
+
+        const result = [
+  `Final status: ${data.status}`,
+  `Total steps: ${data.current_step}`,
+  "",
+  "Robot results:",
+  ...finalRobots.map((robot) => {
+    const start = startingPositionsRef.current.find(
+      (item) => item.id === Number(robot.id)
+    );
+
+    const startPosition = start
+      ? `(${start.x}, ${start.y})`
+      : "Not recorded";
+
+    const finalPosition = `(${robot.x}, ${robot.y})`;
+
+    return [
+      `${robot.name}:`,
+      `  Starting position: ${startPosition}`,
+      `  Final position: ${finalPosition}`,
+      `  Status: ${robot.status}`,
+      `  Battery: ${robot.battery}%`,
+    ].join("\n");
+  }),
+].join("\n");
+
+        try {
+          await saveSimulationHistory(token, {
+            simulation_name: `Simulation ${new Date().toLocaleString()}`,
+            grid_rows: Number(rows),
+            grid_cols: Number(cols),
+            robot_count: robots.length,
+            result: result,
+          });
+
+          // Refresh history after successfully saving.
+          const historyData = await getSimulationHistory(token);
+
+          if (!cancelled && Array.isArray(historyData)) {
+            setHistory(historyData);
+          }
+        } catch (error) {
+            historySavedRef.current = false;
+          if (!cancelled) {
+            setHistoryError(
+              error.message || "Could not save simulation history."
+            );
+          }
+        }
+      }
+
       if (!cancelled) {
         applySimulationState(data);
       }
     } catch (error) {
       if (!cancelled) {
-        setSimulationError(error.message || "Could not retrieve simulation state.");
+        setSimulationError(
+          error.message || "Could not retrieve simulation state."
+        );
       }
     }
   };
@@ -283,7 +384,13 @@ const [robotDestinations, setRobotDestinations] = useState({});
     clearInterval(intervalId);
   };
 }, [token, simulationStatus]);
-  
+
+useEffect(() => {
+  if (token && user && activePage === "History") {
+    loadHistory();
+  }
+}, [token, user, activePage]);
+
 async function handleCellClick(x, y) {
   if (selectedTool === "obstacle") {
     const occupied = robots.some(
@@ -374,22 +481,6 @@ async function handleConfigureSimulation() {
     setSimulationError("Add at least one robot before configuring the simulation.");
     return;
   }
-
-  for (const robot of robots) {
-  const destination = robotDestinations[robot.id];
-
-  if (
-    !destination ||
-    destination.destX === "" ||
-    destination.destY === "" ||
-    destination.destX === undefined ||
-    destination.destY === undefined
-  ) {
-    setSimulationError(`Enter both destination coordinates for ${robot.name}.`);
-    return;
-  }
-}
-
 for (const robot of robots) {
   const destination = robotDestinations[robot.id];
 
@@ -437,11 +528,18 @@ const configuredRobots = robots.map((robot) => {
       return;
     }
   }
+  startingPositionsRef.current = configuredRobots.map((robot) => ({
+  id: robot.id,
+  name: robot.name,
+  x: robot.x,
+  y: robot.y,
+}));
 
   setSimulationLoading(true);
   setSimulationError("");
 
   try {
+    historySavedRef.current = false;
     const data = await configureSimulation(token, {
       rows: Number(rows),
       cols: Number(cols),
@@ -1505,14 +1603,124 @@ updatedRobot.priority = priority;
 )}
 
 
-        {activePage === "History" && (
-          <section className="panel history-placeholder">
-            <div className="history-icon">◷</div>
-            <h3>Simulation history</h3>
-            <p>Your backend already has history APIs. We'll connect this page after the dashboard and grid editor are ready.</p>
-            <button className="primary-button" onClick={() => setActivePage("Grid Simulator")}>Open grid simulator</button>
-          </section>
-        )}
+        
+{activePage === "History" && (
+  <section className="panel history-panel">
+    <div className="panel-heading">
+      <div>
+        <h3>Simulation history</h3>
+        <p>View your previously completed simulations.</p>
+      </div>
+
+      <button
+        className="secondary-button"
+        onClick={loadHistory}
+        disabled={historyLoading}
+      >
+        {historyLoading ? "Refreshing..." : "Refresh"}
+      </button>
+    </div>
+
+    {historyError && (
+      <p className="auth-error">{historyError}</p>
+    )}
+
+    {historyLoading && (
+      <p>Loading simulation history...</p>
+    )}
+
+    {!historyLoading && !historyError && history.length === 0 && (
+      <div className="empty-state">
+        <div className="history-icon">◷</div>
+        <h3>No simulations yet</h3>
+        <p>Completed simulations will appear here.</p>
+        <button
+          className="primary-button"
+          onClick={() => setActivePage("Grid Simulator")}
+        >
+          Open simulator
+        </button>
+      </div>
+    )}
+
+    {!historyLoading && history.length > 0 && (
+      <div className="history-list">
+        {history.map((item) => (
+          <div className="template-card" key={item.id}>
+            <div className="panel-heading">
+              <div>
+                <h4>{item.simulation_name}</h4>
+                <p>{item.created_at}</p>
+              </div>
+              <span className="status-pill">
+                Completed
+              </span>
+            </div>
+
+            <div className="inspector-grid">
+              <div>
+                <span>Grid size</span>
+                <strong>
+                  {item.grid_rows} × {item.grid_cols}
+                </strong>
+              </div>
+
+              <div>
+                <span>Robots</span>
+                <strong>{item.robot_count}</strong>
+              </div>
+
+              <div>
+                <span>Simulation ID</span>
+                <strong>#{item.id}</strong>
+              </div>
+            </div>
+
+            
+<div className="history-visual-section">
+  <h4>Robot positions</h4>
+
+  <div className="history-grid-comparison">
+    <div>
+      <h5>Starting positions</h5>
+      <HistoryMiniGrid
+        rows={Number(item.grid_rows)}
+        cols={Number(item.grid_cols)}
+        result={item.result}
+        positionType="start"
+      />
+    </div>
+
+    <div>
+      <h5>Final positions</h5>
+      <HistoryMiniGrid
+        rows={Number(item.grid_rows)}
+        cols={Number(item.grid_cols)}
+        result={item.result}
+        positionType="final"
+      />
+    </div>
+  </div>
+</div>
+
+<div style={{ marginTop: 16 }}>
+  <strong>Simulation result</strong>
+  <pre style={{
+    whiteSpace: "pre-wrap",
+    overflowWrap: "anywhere",
+    marginTop: 8
+  }}>
+    {item.result}
+  </pre>
+</div>
+
+          </div>
+        ))}
+      </div>
+    )}
+  </section>
+)}
+
       </main>
     </div>
   );
@@ -1524,6 +1732,66 @@ function StatCard({ label, value, detail, icon }) {
       <div className="stat-top"><span>{label}</span><b>{icon}</b></div>
       <h2>{value}</h2>
       <p>{detail}</p>
+    </div>
+  );
+}
+
+function HistoryMiniGrid({ rows, cols, result, positionType }) {
+  const robotPositions = [];
+  const robotBlocks = result.split("\n\n");
+
+  robotBlocks.forEach((block) => {
+    const nameMatch = block.match(/Robot results:\s*([\s\S]*)/);
+    if (!nameMatch) return;
+  });
+
+  const matches = [
+    ...result.matchAll(
+      /([^\n]+):\n\s+Starting position: \((\d+), (\d+)\)\n\s+Final position: \((\d+), (\d+)\)/g
+    ),
+  ];
+
+  matches.forEach((match) => {
+    const isStarting = positionType === "start";
+
+    robotPositions.push({
+      name: match[1].trim(),
+      x: Number(isStarting ? match[2] : match[4]),
+      y: Number(isStarting ? match[3] : match[5]),
+    });
+  });
+
+  return (
+    <div className="history-mini-grid">
+      <div
+        className="history-mini-board"
+        style={{
+          gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+        }}
+      >
+        {Array.from({ length: rows * cols }, (_, index) => {
+          const x = index % cols;
+          const y = Math.floor(index / cols);
+
+          const robot = robotPositions.find(
+            (item) => item.x === x && item.y === y
+          );
+
+          return (
+            <div
+              key={`${x}-${y}`}
+              className={`history-mini-cell ${robot ? "occupied" : ""}`}
+              title={
+                robot
+                  ? `${robot.name} (${x}, ${y})`
+                  : `(${x}, ${y})`
+              }
+            >
+              {robot ? robot.name.slice(0, 1).toUpperCase() : ""}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

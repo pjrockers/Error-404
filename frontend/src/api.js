@@ -196,4 +196,24 @@ export async function getSimulationState(token) {
     },
   });
 }
+// ==========================================
+// SIMULATION HISTORY API
+// ==========================================
 
+export async function saveSimulationHistory(token, simulation) {
+  return apiRequest("/simulations/history", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(simulation),
+  });
+}
+
+export async function getSimulationHistory(token) {
+  return apiRequest("/simulations/history", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}

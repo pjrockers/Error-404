@@ -163,7 +163,7 @@ void registerSimulationRoutes(httplib::Server& server)
     // -------------------------------------------------
     // CONFIGURE SIMULATION
     // -------------------------------------------------
-    server.Post("/api/simulation/configure",
+    server.Post("/simulation/configure",
         [](const httplib::Request& req, httplib::Response& res)
     {
         sqlite3_int64 userId;
@@ -338,7 +338,7 @@ void registerSimulationRoutes(httplib::Server& server)
     // -------------------------------------------------
     // START SIMULATION
     // -------------------------------------------------
-    server.Post("/api/simulation/start",
+    server.Post("/simulation/start",
         [](const httplib::Request& req, httplib::Response& res)
     {
         sqlite3_int64 userId;
@@ -375,7 +375,7 @@ void registerSimulationRoutes(httplib::Server& server)
     // -------------------------------------------------
     // PAUSE SIMULATION
     // -------------------------------------------------
-    server.Post("/api/simulation/pause",
+    server.Post("/simulation/pause",
         [](const httplib::Request& req, httplib::Response& res)
     {
         sqlite3_int64 userId;
@@ -410,7 +410,7 @@ void registerSimulationRoutes(httplib::Server& server)
     // -------------------------------------------------
     // RESUME SIMULATION
     // -------------------------------------------------
-    server.Post("/api/simulation/resume",
+    server.Post("/simulation/resume",
         [](const httplib::Request& req, httplib::Response& res)
     {
         sqlite3_int64 userId;
@@ -445,7 +445,7 @@ void registerSimulationRoutes(httplib::Server& server)
     // -------------------------------------------------
     // RESET SIMULATION
     // -------------------------------------------------
-    server.Post("/api/simulation/reset",
+    server.Post("/simulation/reset",
         [](const httplib::Request& req, httplib::Response& res)
     {
         sqlite3_int64 userId;
@@ -482,7 +482,7 @@ void registerSimulationRoutes(httplib::Server& server)
     // -------------------------------------------------
     // GET SIMULATION STATE
     // -------------------------------------------------
-    server.Get("/api/simulation/state",
+    server.Get("/simulation/state",
         [](const httplib::Request& req, httplib::Response& res)
     {
         sqlite3_int64 userId;

@@ -2,29 +2,16 @@
   "robots": [
     {
       "id": 1,
-      "name": "1",
+      "name": "a",
       "type": "General",
-      "x": 8,
+      "x": 1,
       "y": 1,
-      "destX": 8,
-      "destY": 1,
-      "battery": 93,
-      "speed": 5,
-      "priority": 2,
-      "status": "Arrived"
-    },
-    {
-      "id": 2,
-      "name": "Beta",
-      "type": "Rescue",
-      "x": 8,
-      "y": 8,
-      "destX": 8,
-      "destY": 8,
-      "battery": 93,
+      "destX": 6,
+      "destY": 7,
+      "battery": 1,
       "speed": 5,
       "priority": 3,
-      "status": "Arrived"
+      "status": "Moving"
     }
   ]
 }

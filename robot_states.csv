@@ -1,3 +1,2 @@
 id,name,type,x,y,destX,destY,battery,speed,priority,status
-1,1,General,8,1,8,1,93,5,2,Arrived
-2,Beta,Rescue,8,8,8,8,93,5,3,Arrived
+1,a,General,1,1,6,7,1,5,3,Moving

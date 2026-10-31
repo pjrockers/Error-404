@@ -21,3 +21,16 @@ void RescueRobot::displayInfo()
     cout << "Rescue Equipment: "
          << equipmentCount << endl;
 }
+int RescueRobot::getEquipmentCount() const
+{
+    return equipmentCount;
+}
+
+bool RescueRobot::setEquipmentCount(int count)
+{
+    if (count < 0)
+        return false;
+
+    equipmentCount = count;
+    return true;
+}

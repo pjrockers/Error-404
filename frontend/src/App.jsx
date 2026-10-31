@@ -11,6 +11,12 @@ import {
   createRobot,
   updateRobot,
   deleteRobot,
+  configureSimulation,
+  startSimulation,
+  pauseSimulation,
+  resumeSimulation,
+  resetSimulation,
+  getSimulationState,
 } from "./api";
 
 const initialRobots = [
@@ -233,10 +239,50 @@ function handleEditRobot(robot) {
   const [obstacles, setObstacles] = useState([]);
   const [selectedTool, setSelectedTool] = useState("obstacle");
   const [running, setRunning] = useState(false);
+  // Real backend simulation state
+const [simulationStatus, setSimulationStatus] = useState("not_configured");
+const [simulationStep, setSimulationStep] = useState(0);
+const [simulationError, setSimulationError] = useState("");
+const [simulationFinished, setSimulationFinished] = useState(false);
+const [simulationLoading, setSimulationLoading] = useState(false);
+const [simulationRobots, setSimulationRobots] = useState([]);
+// Destination coordinates for each robot
+const [robotDestinations, setRobotDestinations] = useState({});
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [newRobotName, setNewRobotName] = useState("");
   const [newRobotX, setNewRobotX] = useState(0);
   const [newRobotY, setNewRobotY] = useState(0);
+
+  useEffect(() => {
+  if (!token || !["running", "paused"].includes(simulationStatus)) {
+    return;
+  }
+
+  let cancelled = false;
+
+  const pollSimulation = async () => {
+    try {
+      const data = await getSimulationState(token);
+
+      if (!cancelled) {
+        applySimulationState(data);
+      }
+    } catch (error) {
+      if (!cancelled) {
+        setSimulationError(error.message || "Could not retrieve simulation state.");
+      }
+    }
+  };
+
+  pollSimulation();
+
+  const intervalId = setInterval(pollSimulation, 500);
+
+  return () => {
+    cancelled = true;
+    clearInterval(intervalId);
+  };
+}, [token, simulationStatus]);
   
 async function handleCellClick(x, y) {
   if (selectedTool === "obstacle") {
@@ -307,6 +353,175 @@ async function handleCellClick(x, y) {
 }
 
 
+
+function applySimulationState(data) {
+  setSimulationStatus(data.status || "unknown");
+  setSimulationStep(Number(data.current_step || 0));
+  setSimulationFinished(Boolean(data.finished));
+  setSimulationError(data.error || "");
+
+  if (Array.isArray(data.robots)) {
+    setSimulationRobots(data.robots);
+  }
+
+  setRunning(data.status === "running");
+}
+
+async function handleConfigureSimulation() {
+  if (!token) return;
+
+  if (robots.length === 0) {
+    setSimulationError("Add at least one robot before configuring the simulation.");
+    return;
+  }
+
+  for (const robot of robots) {
+  const destination = robotDestinations[robot.id];
+
+  if (
+    !destination ||
+    destination.destX === "" ||
+    destination.destY === "" ||
+    destination.destX === undefined ||
+    destination.destY === undefined
+  ) {
+    setSimulationError(`Enter both destination coordinates for ${robot.name}.`);
+    return;
+  }
+}
+
+for (const robot of robots) {
+  const destination = robotDestinations[robot.id];
+
+  if (
+    !destination ||
+    destination.destX === "" ||
+    destination.destY === "" ||
+    destination.destX === undefined ||
+    destination.destY === undefined
+  ) {
+    setSimulationError(`Enter both destination coordinates for ${robot.name}.`);
+    return;
+  }
+}
+
+const configuredRobots = robots.map((robot) => {
+    const destination = robotDestinations[robot.id] || {};
+
+    return {
+      id: Number(robot.id),
+      name: robot.name,
+      type: robot.type || "General",
+      x: Number(robot.x),
+      y: Number(robot.y),
+      destX: Number(destination.destX),
+      destY: Number(destination.destY),
+      battery: Number(robot.battery),
+      speed: Number(robot.speed ?? 5),
+      priority: Number(robot.priority ?? 1),
+    };
+  });
+
+  for (const robot of configuredRobots) {
+    if (
+      !Number.isInteger(robot.destX) ||
+      !Number.isInteger(robot.destY) ||
+      robot.destX < 0 ||
+      robot.destX >= cols ||
+      robot.destY < 0 ||
+      robot.destY >= rows
+    ) {
+      setSimulationError(
+        `Enter a valid destination for ${robot.name}.`
+      );
+      return;
+    }
+  }
+
+  setSimulationLoading(true);
+  setSimulationError("");
+
+  try {
+    const data = await configureSimulation(token, {
+      rows: Number(rows),
+      cols: Number(cols),
+      obstacles: obstacles.map((cell) => ({
+        x: Number(cell.x),
+        y: Number(cell.y),
+      })),
+      robots: configuredRobots,
+    });
+
+    applySimulationState(data);
+  } catch (error) {
+    setSimulationError(error.message || "Could not configure simulation.");
+  } finally {
+    setSimulationLoading(false);
+  }
+}
+
+async function handleStartSimulation() {
+  setSimulationLoading(true);
+  setSimulationError("");
+
+  try {
+    const data = await startSimulation(token);
+    applySimulationState(data);
+  } catch (error) {
+    setSimulationError(error.message || "Could not start simulation.");
+  } finally {
+    setSimulationLoading(false);
+  }
+}
+
+async function handlePauseSimulation() {
+  setSimulationLoading(true);
+
+  try {
+    const data = await pauseSimulation(token);
+    applySimulationState(data);
+  } catch (error) {
+    setSimulationError(error.message || "Could not pause simulation.");
+  } finally {
+    setSimulationLoading(false);
+  }
+}
+
+async function handleResumeSimulation() {
+  setSimulationLoading(true);
+
+  try {
+    const data = await resumeSimulation(token);
+    applySimulationState(data);
+  } catch (error) {
+    setSimulationError(error.message || "Could not resume simulation.");
+  } finally {
+    setSimulationLoading(false);
+  }
+}
+
+async function handleResetSimulation() {
+  setSimulationLoading(true);
+  setSimulationError("");
+
+  try {
+    const data = await resetSimulation(token);
+    applySimulationState(data);
+  } catch (error) {
+    setSimulationError(error.message || "Could not reset simulation.");
+  } finally {
+    setSimulationLoading(false);
+  }
+}
+function updateRobotDestination(robotId, field, value) {
+  setRobotDestinations((current) => ({
+    ...current,
+    [robotId]: {
+      ...current[robotId],
+      [field]: value,
+    },
+  }));
+}
 async function createRobotFromTemplate(event) {
   event.preventDefault();
 
@@ -453,15 +668,6 @@ async function addRobot() {
     setRobotsError(error.message || "Could not create robot.");
   }
 }
-
-
-  function resetSimulation() {
-    setRunning(false);
-    setObstacles([]);
-    setRobots(initialRobots);
-    setSelectedTool("obstacle");
-  }
-
   const occupiedCount = obstacles.length + robots.length;
   
   if (authChecking) {
@@ -551,7 +757,8 @@ async function addRobot() {
               <StatCard label="TOTAL ROBOTS" value={robots.length} detail="In this workspace" icon="◈" />
               <StatCard label="GRID SIZE" value={`${rows} × ${cols}`} detail={`${rows * cols} cells`} icon="▦" />
               <StatCard label="OBSTACLES" value={obstacles.length} detail="Placed on grid" icon="⬡" />
-              <StatCard label="SIMULATION" value={running ? "Running" : "Idle"} detail="Local demo only" icon="▷" />
+              <StatCard label="SIMULATION" value={simulationStatus}
+                detail={`Step ${simulationStep}`} icon="▷" />
             </section>
 
             <section className="content-grid">
@@ -690,9 +897,16 @@ async function addRobot() {
                 <h3>2D environment editor</h3>
                 <p>Click cells to place or remove obstacles, or select a robot to reposition it.</p>
               </div>
-              <span className={`status-pill ${running ? "running" : ""}`}>
-                <i /> {running ? "Running (demo)" : "Ready"}
-              </span>
+              <span
+  className={`status-pill ${
+    simulationStatus === "configured" ||
+    simulationStatus === "running"
+      ? "running"
+      : ""
+  }`}
+>
+  <i /> {simulationStatus}
+</span>
             </div>
 
             <div className="simulator-controls">
@@ -715,15 +929,72 @@ async function addRobot() {
                 </select>
               </label>
             </div>
+            <div className="destination-panel">
+  <div className="panel-heading">
+    <div>
+      <h3>Set Robot Destinations</h3>
+      <p>Choose the target coordinates for each robot.</p>
+    </div>
+  </div>
+
+  <div className="destination-list">
+    {robots.map((robot) => (
+      <div className="destination-row" key={robot.id}>
+        <div className="destination-robot">
+          <strong>{robot.name}</strong>
+          <span>{robot.type} Robot · ID {robot.id}</span>
+        </div>
+
+        <label>
+          Destination X
+          <input
+            type="number"
+            min="0"
+            max={cols - 1}
+            placeholder="X coordinate"
+            value={robotDestinations[robot.id]?.destX ?? ""}
+            disabled={simulationStatus === "running" || simulationStatus === "paused"}
+            onChange={(event) =>
+              updateRobotDestination(robot.id, "destX", event.target.value)
+            }
+          />
+        </label>
+
+        <label>
+          Destination Y
+          <input
+            type="number"
+            min="0"
+            max={rows - 1}
+            placeholder="Y coordinate"
+            value={robotDestinations[robot.id]?.destY ?? ""}
+            disabled={simulationStatus === "running" || simulationStatus === "paused"}
+            onChange={(event) =>
+              updateRobotDestination(robot.id, "destY", event.target.value)
+            }
+          />
+        </label>
+      </div>
+    ))}
+  </div>
+</div>
+{simulationError && (
+  <p className="auth-error">
+    {simulationError}
+  </p>
+)}
 
             <GridPreview
               rows={rows}
               cols={cols}
-              robots={robots}
+              robots={simulationRobots.length > 0 ? simulationRobots : robots}
               obstacles={obstacles}
               onCellClick={handleCellClick}
               interactive
             />
+            {simulationLoading && (
+  <p>Processing simulation...</p>
+)}
 
             <div className="simulator-footer">
               <div className="legend">
@@ -732,15 +1003,49 @@ async function addRobot() {
                 <span><i className="legend-empty" /> Free cell</span>
               </div>
               <div className="action-row">
-                <button className="secondary-button" onClick={resetSimulation}>Reset</button>
-                <button className="primary-button" onClick={() => setRunning(!running)}>
-                  {running ? "Stop demo" : "▶ Start demo"}
-                </button>
-              </div>
+  <button
+    className="secondary-button"
+    onClick={handleResetSimulation}
+    disabled={simulationLoading || simulationStatus === "not_configured"}
+  >
+    Reset
+  </button>
+
+  <button
+    className="secondary-button"
+    onClick={handleConfigureSimulation}
+    disabled={simulationLoading || simulationStatus === "running" || simulationStatus === "paused"}
+  >
+    Configure
+  </button>
+
+  {simulationStatus === "running" ? (
+    <button
+      className="primary-button"
+      onClick={handlePauseSimulation}
+      disabled={simulationLoading}
+    >
+      Pause
+    </button>
+  ) : simulationStatus === "paused" ? (
+    <button
+      className="primary-button"
+      onClick={handleResumeSimulation}
+      disabled={simulationLoading}
+    >
+      Resume
+    </button>
+  ) : (
+    <button
+      className="primary-button"
+      onClick={handleStartSimulation}
+      disabled={simulationLoading || simulationStatus !== "configured"}
+    >
+      Start simulation
+    </button>
+  )}
+</div>
             </div>
-            <p className="notice">
-              Demo only: this interface does not yet run the C++ pathfinding engine.
-            </p>
           </section>
         )}
 

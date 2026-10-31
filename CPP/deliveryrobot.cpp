@@ -45,3 +45,31 @@ void DeliveryRobot::displayInfo()
     cout << "Package Capacity: " << packageCapacity << endl;
     cout << "Packages Carried: " << packagesCarried << endl;
 }
+
+int DeliveryRobot::getPackageCapacity() const
+{
+    return packageCapacity;
+}
+
+int DeliveryRobot::getPackagesCarried() const
+{
+    return packagesCarried;
+}
+
+bool DeliveryRobot::setPackageCapacity(int capacity)
+{
+    if (capacity <= 0 || capacity < packagesCarried)
+        return false;
+
+    packageCapacity = capacity;
+    return true;
+}
+
+bool DeliveryRobot::setPackagesCarried(int count)
+{
+    if (count < 0 || count > packageCapacity)
+        return false;
+
+    packagesCarried = count;
+    return true;
+}

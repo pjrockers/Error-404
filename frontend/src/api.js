@@ -139,3 +139,61 @@ export async function deleteRobot(token, id) {
 }
 
 
+// ==========================================
+// SIMULATION API
+// ==========================================
+
+export async function configureSimulation(token, configuration) {
+  return apiRequest("/simulation/configure", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(configuration),
+  });
+}
+
+export async function startSimulation(token) {
+  return apiRequest("/simulation/start", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function pauseSimulation(token) {
+  return apiRequest("/simulation/pause", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function resumeSimulation(token) {
+  return apiRequest("/simulation/resume", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function resetSimulation(token) {
+  return apiRequest("/simulation/reset", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function getSimulationState(token) {
+  return apiRequest("/simulation/state", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+

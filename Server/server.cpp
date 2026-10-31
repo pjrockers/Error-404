@@ -13,9 +13,10 @@
 #include <sodium.h>
 #include "robot_templates.h"
 #include <nlohmann/json.hpp>
-
+#include "simulation_routes.h"
 using namespace std;
 using json = nlohmann::json;
+
 string hashSessionToken(const string& token)
 {
     unsigned char tokenHash[crypto_generichash_BYTES];
@@ -54,6 +55,7 @@ int main()
     registerRobotTemplateRoutes(server);
     registerSimulationHistoryRoutes(server);
     registerRobotRoutes(server);
+    registerSimulationRoutes(server);
     // Home endpoint
     server.Get("/",
         [](const httplib::Request& req,

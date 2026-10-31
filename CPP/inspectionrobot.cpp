@@ -25,4 +25,16 @@ void InspectionRobot::displayInfo()
     cout << "Inspections Completed: "
          << inspectionsCompleted << endl;
 }
+int InspectionRobot::getInspectionsCompleted() const
+{
+    return inspectionsCompleted;
+}
 
+bool InspectionRobot::setInspectionsCompleted(int count)
+{
+    if (count < 0)
+        return false;
+
+    inspectionsCompleted = count;
+    return true;
+}

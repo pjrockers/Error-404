@@ -15,6 +15,11 @@ public:
                   int capacity);
 
     void loadPackages(int count);
+    int getPackageCapacity() const;
+int getPackagesCarried() const;
+
+bool setPackageCapacity(int capacity);
+bool setPackagesCarried(int count);
     void displayInfo() override;
 };
 

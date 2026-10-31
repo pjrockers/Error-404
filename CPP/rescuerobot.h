@@ -14,6 +14,8 @@ public:
                 int equipment);
 
     void displayInfo() override;
+    int getEquipmentCount() const;
+bool setEquipmentCount(int count);
 };
 
 #endif

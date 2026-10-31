@@ -201,3 +201,11 @@ bool Robot::setBattery(double amount)
     battery = amount;
     return true;
 }
+bool Robot::setSpeed(double newSpeed)
+{
+    if (newSpeed <= 0 || newSpeed > 100)
+        return false;
+
+    speed = newSpeed;
+    return true;
+}

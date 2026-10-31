@@ -24,6 +24,82 @@ bool isValidSessionToken(const string& token)
 
     return true;
 }
+bool getAuthenticatedUserId(
+    const httplib::Request& req,
+    sqlite3_int64& userId)
+{
+    userId = 0;
+
+    string authHeader =
+        req.get_header_value("Authorization");
+
+    if (authHeader.length() <= 7 ||
+        authHeader.substr(0, 7) != "Bearer ")
+    {
+        return false;
+    }
+
+    string token = authHeader.substr(7);
+
+    if (!isValidSessionToken(token))
+        return false;
+
+    string tokenHash = hashSessionToken(token);
+
+    sqlite3* db = NULL;
+
+    if (!openDatabase(&db))
+    {
+        if (db != NULL)
+            sqlite3_close(db);
+
+        return false;
+    }
+
+    const char* sql =
+        "SELECT user_id FROM sessions "
+        "WHERE id = ? AND expires_at > ?;";
+
+    sqlite3_stmt* statement = NULL;
+
+    int result = sqlite3_prepare_v2(
+        db, sql, -1, &statement, NULL
+    );
+
+    if (result == SQLITE_OK)
+    {
+        result = sqlite3_bind_text(
+            statement, 1, tokenHash.c_str(),
+            -1, SQLITE_TRANSIENT
+        );
+    }
+
+    if (result == SQLITE_OK)
+    {
+        result = sqlite3_bind_int64(
+            statement, 2,
+            static_cast<sqlite3_int64>(time(NULL))
+        );
+    }
+
+    if (result == SQLITE_OK)
+        result = sqlite3_step(statement);
+
+    bool authenticated = false;
+
+    if (result == SQLITE_ROW)
+    {
+        userId = sqlite3_column_int64(statement, 0);
+        authenticated = true;
+    }
+
+    if (statement != NULL)
+        sqlite3_finalize(statement);
+
+    sqlite3_close(db);
+
+    return authenticated;
+}
 void registerAuthRoutes(httplib::Server& server)
 {
     // User registration endpoint

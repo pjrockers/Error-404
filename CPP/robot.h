@@ -39,6 +39,7 @@ public:
     string getName() const;
     string getType() const;
     double getSpeed() const;
+    bool setSpeed(double newSpeed);
     double getBattery() const;
     string getStatus() const;
     RobotState getState() const;

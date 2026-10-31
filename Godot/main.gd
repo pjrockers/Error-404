@@ -9,6 +9,7 @@ var destination_nodes: Dictionary = {}
 var robot_start_grid_positions: Dictionary = {}
 var robot_initial_batteries: Dictionary = {}
 var robot_ids: Array[String] = []
+var simulation_paused = false
 var robot_battery_labels: Dictionary = {}
 var grid_rows: int = 20
 var grid_cols: int = 20
@@ -70,8 +71,26 @@ func _on_button_start_pressed():
 
 
 func _on_pause_pressed():
-	simulation_running = false
-	update_status("Paused")
+	var command = "RESUME" if simulation_paused else "PAUSE"
+
+	var file = FileAccess.open(
+		"C:/roboSwarmBridge/command.txt",
+		FileAccess.WRITE
+	)
+
+	if file == null:
+		push_error("Could not send command to C++.")
+		return
+
+	file.store_string(command)
+	file.close()
+
+	simulation_paused = !simulation_paused
+
+	if simulation_paused:
+		update_status("Paused")
+	else:
+		update_status("Running")
 	
 func _on_reset_pressed():
 	simulation_running = false

@@ -15,6 +15,7 @@ Robot::Robot(int robotID, string robotName, string robotType)
       battery(100),
       speed(5),
       priority(1),
+      currentDestinationIndex(0),
       status("Idle")
 {
 }
@@ -208,4 +209,69 @@ bool Robot::setSpeed(double newSpeed)
 
     speed = newSpeed;
     return true;
+}
+void Robot::addDestination(double dx, double dy)
+{
+    destinations.push_back(make_pair(dx, dy));
+
+    // The first destination becomes the active destination.
+    if (destinations.size() == 1)
+    {
+        currentDestinationIndex = 0;
+        destX = dx;
+        destY = dy;
+        status = "Moving";
+    }
+}
+
+void Robot::clearDestinations()
+{
+    destinations.clear();
+    currentDestinationIndex = 0;
+
+    destX = 0;
+    destY = 0;
+
+    status = "Idle";
+}
+
+vector<pair<double, double> > Robot::getDestinations() const
+{
+    return destinations;
+}
+
+bool Robot::hasMoreDestinations() const
+{
+    return currentDestinationIndex + 1 < 
+           static_cast<int>(destinations.size());
+}
+
+void Robot::moveToNextDestination()
+{
+    if (!hasMoreDestinations())
+    {
+        status = "Arrived";
+        return;
+    }
+
+    currentDestinationIndex++;
+
+    destX = destinations[currentDestinationIndex].first;
+    destY = destinations[currentDestinationIndex].second;
+
+    status = "Moving";
+}
+void Robot::resetDestinationProgress()
+{
+    if (destinations.empty())
+    {
+        return;
+    }
+
+    currentDestinationIndex = 0;
+
+    destX = destinations[0].first;
+    destY = destinations[0].second;
+
+    status = "Idle";
 }

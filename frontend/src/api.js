@@ -80,7 +80,23 @@ export async function saveRobotTemplate(token, template) {
     body: JSON.stringify(template),
   });
 }
-
+export async function updateRobotTemplate(token, templateId, template) {
+  return apiRequest(`/robots/templates/${templateId}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(template),
+  });
+}
+export async function deleteRobotTemplate(token, templateId) {
+  return apiRequest(`/robots/templates/${templateId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
 export async function getRobots(token) {
   return apiRequest("/robots", {
     headers: {
@@ -215,5 +231,14 @@ export async function getSimulationHistory(token) {
     headers: {
       Authorization: `Bearer ${token}`,
     },
+  });
+}
+export async function setPlaybackSpeed(token, delay) {
+  return apiRequest("/simulation/speed", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ delay }),
   });
 }

@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <ostream>
+#include <utility>
 #include "robot.h"
 #include "gridmap.h"
 #include "robotstate.h"
@@ -38,6 +39,7 @@ private:
     vector<Robot*> robots;
     vector<int> waitCounters;
     vector<InitialState> initialStates;
+    vector<vector<pair<int, int>>> robotPaths;
 
     // Persistent simulation state (these used to be local variables).
     int currentStep;
@@ -63,6 +65,7 @@ public:
     void displayRobots() const;
     int getRobotCount() const;
     vector<RobotState> getRobotStates() const;
+    vector<vector<pair<int, int>>> getRobotPaths() const;
     void displayCurrentMap() const;
 
     // ---- Step-based API (for the backend) ----

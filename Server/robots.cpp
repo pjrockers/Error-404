@@ -248,7 +248,6 @@ void registerRobotRoutes(httplib::Server& server)
                 );
                 return;
             }
-
             const char* sql =
                 "SELECT id, name, robot_type, x, y, battery, "
                 "speed, priority, status, attributes, created_at "
@@ -373,6 +372,54 @@ void registerRobotRoutes(httplib::Server& server)
                 );
                 return;
             }
+            // Check for duplicate robot name
+const char* nameCheckSql =
+    "SELECT id FROM robots "
+    "WHERE user_id = ? "
+    "AND lower(trim(name)) = lower(trim(?)) "
+    "LIMIT 1;";
+
+sqlite3_stmt* checkStatement = NULL;
+
+int checkResult = sqlite3_prepare_v2(
+    db, nameCheckSql, -1, &checkStatement, NULL
+);
+
+if (checkResult == SQLITE_OK)
+    checkResult = sqlite3_bind_int64(
+        checkStatement, 1, userId
+    );
+
+if (checkResult == SQLITE_OK)
+    checkResult = sqlite3_bind_text(
+        checkStatement, 2, name.c_str(),
+        -1, SQLITE_TRANSIENT
+    );
+
+if (checkResult == SQLITE_OK)
+    checkResult = sqlite3_step(checkStatement);
+
+if (checkResult == SQLITE_ROW)
+{
+    sqlite3_finalize(checkStatement);
+    sqlite3_close(db);
+
+    res.status = 409;
+    res.set_content(
+        R"({"error":"A robot with this name already exists."})",
+        "application/json"
+    );
+    return;
+}
+
+sqlite3_finalize(checkStatement);
+
+if (checkResult != SQLITE_DONE)
+{
+    sqlite3_close(db);
+    sendDatabaseError(res);
+    return;
+}
 
             const char* sql =
                 "INSERT INTO robots "
@@ -504,6 +551,61 @@ void registerRobotRoutes(httplib::Server& server)
                 );
                 return;
             }
+
+            // Check whether another robot already has this name
+const char* nameCheckSql =
+    "SELECT id FROM robots "
+    "WHERE user_id = ? "
+    "AND lower(trim(name)) = lower(trim(?)) "
+    "AND id != ? "
+    "LIMIT 1;";
+
+sqlite3_stmt* checkStatement = NULL;
+
+int checkResult = sqlite3_prepare_v2(
+    db, nameCheckSql, -1, &checkStatement, NULL
+);
+
+if (checkResult == SQLITE_OK)
+    checkResult = sqlite3_bind_int64(
+        checkStatement, 1, userId
+    );
+
+if (checkResult == SQLITE_OK)
+    checkResult = sqlite3_bind_text(
+        checkStatement, 2, name.c_str(),
+        -1, SQLITE_TRANSIENT
+    );
+
+if (checkResult == SQLITE_OK)
+    checkResult = sqlite3_bind_int64(
+        checkStatement, 3, robotId
+    );
+
+if (checkResult == SQLITE_OK)
+    checkResult = sqlite3_step(checkStatement);
+
+if (checkResult == SQLITE_ROW)
+{
+    sqlite3_finalize(checkStatement);
+    sqlite3_close(db);
+
+    res.status = 409;
+    res.set_content(
+        R"({"error":"Another robot already has this name."})",
+        "application/json"
+    );
+    return;
+}
+
+sqlite3_finalize(checkStatement);
+
+if (checkResult != SQLITE_DONE)
+{
+    sqlite3_close(db);
+    sendDatabaseError(res);
+    return;
+}
 
             const char* sql =
                 "UPDATE robots SET name = ?, robot_type = ?, "

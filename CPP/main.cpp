@@ -99,49 +99,80 @@ bool validateRobotRoutes(
     {
         Robot* robot = robots[i];
 
-        vector<pair<int, int> > path =
-            finder.findPath(
-                map,
-                static_cast<int>(robot->getX()),
-                static_cast<int>(robot->getY()),
-                static_cast<int>(robot->getDestX()),
-                static_cast<int>(robot->getDestY())
-            );
+        int currentX = static_cast<int>(robot->getX());
+        int currentY = static_cast<int>(robot->getY());
 
-        if (path.empty())
+        int totalMoves = 0;
+        bool routeValid = true;
+
+        vector<pair<double, double> > destinations =
+            robot->getDestinations();
+
+        // Support robots that still use the original single destination.
+        if (destinations.empty())
         {
-            cout << "Robot " << robot->getID()
-                 << " (" << robot->getStatus()
-                 << "): NO ROUTE FOUND.\n";
+            destinations.push_back(
+                make_pair(robot->getDestX(), robot->getDestY())
+            );
+        }
 
+        cout << "\nRobot " << robot->getID() << ":\n";
+
+        // Check each destination one by one.
+        for (size_t j = 0; j < destinations.size(); j++)
+        {
+            int dx = static_cast<int>(destinations[j].first);
+            int dy = static_cast<int>(destinations[j].second);
+
+            vector<pair<int, int> > path =
+                finder.findPath(map, currentX, currentY, dx, dy);
+
+            if (path.empty())
+            {
+                cout << "NO ROUTE FOUND to destination "
+                     << j + 1 << " (" << dx << ", " << dy << ").\n";
+
+                routeValid = false;
+                break;
+            }
+
+            int moves = static_cast<int>(path.size()) - 1;
+            totalMoves += moves;
+
+            cout << "Destination " << j + 1
+                 << " (" << dx << ", " << dy << "): "
+                 << moves << " moves required.\n";
+
+            // The next segment starts at this destination.
+            currentX = dx;
+            currentY = dy;
+        }
+
+        if (!routeValid)
+        {
             allValid = false;
             continue;
         }
 
-        int movesRequired = static_cast<int>(path.size()) - 1;
         int batteryAvailable = robot->getBattery();
 
-        cout << "\nRobot " << robot->getID()
-             << ": Route available. "
-             << "Moves required: " << movesRequired
-             << endl;
-
+        cout << "Total moves required: " << totalMoves << endl;
         cout << "Battery available: "
              << batteryAvailable << "%" << endl;
 
-        if (batteryAvailable < movesRequired)
+        if (batteryAvailable < totalMoves)
         {
             cout << "INSUFFICIENT BATTERY! Robot "
                  << robot->getID()
                  << " needs at least "
-                 << movesRequired
-                 << "% battery to reach its destination.\n";
+                 << totalMoves
+                 << "% battery.\n";
 
             allValid = false;
         }
         else
         {
-            cout << "Battery check passed.\n";
+            cout << "Route and battery checks passed.\n";
         }
     }
 

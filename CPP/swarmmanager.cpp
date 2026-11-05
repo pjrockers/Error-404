@@ -116,6 +116,24 @@ bool SwarmManager::addRobot(Robot* robot)
              << " has an invalid destination.\n";
         return false;
     }
+    // Validate every destination in the robot's queue.
+vector<pair<double, double> > destinations =
+    robot->getDestinations();
+
+for (size_t i = 0; i < destinations.size(); i++)
+{
+    int destX = static_cast<int>(destinations[i].first);
+    int destY = static_cast<int>(destinations[i].second);
+
+    if (!map.isWalkable(destX, destY))
+    {
+        cout << "Robot " << robot->getID()
+             << " has an invalid waypoint at ("
+             << destX << ", " << destY << ").\n";
+
+        return false;
+    }
+}
 
     for (int i = 0; i < static_cast<int>(robots.size()); i++)
     {
@@ -143,6 +161,10 @@ bool SwarmManager::addRobot(Robot* robot)
     initial.battery = robot->getBattery();
     initial.status = robot->getStatus();
     initialStates.push_back(initial);
+    // Store the robot's initial position as the first path cell.
+    vector<pair<int, int>> initialPath;
+    initialPath.push_back(make_pair(x, y));
+    robotPaths.push_back(initialPath);
 
     cout << robot->getStatus()
          << " robot registered successfully. ID: "
@@ -197,7 +219,10 @@ vector<RobotState> SwarmManager::getRobotStates() const
 
     return states;
 }
-
+vector<vector<pair<int, int>>> SwarmManager::getRobotPaths() const
+{
+    return robotPaths;
+}
 int SwarmManager::indexOf(const Robot* robot) const
 {
     for (int i = 0; i < static_cast<int>(robots.size()); i++)
@@ -259,8 +284,15 @@ void SwarmManager::resetSimulation()
     {
         robots[i]->setPosition(initialStates[i].x, initialStates[i].y);
         robots[i]->setBattery(initialStates[i].battery);
+        robots[i]->resetDestinationProgress();
         robots[i]->setStatus(initialStates[i].status);
         waitCounters[i] = 0;
+        robotPaths[i].clear();
+
+robotPaths[i].push_back(make_pair(
+    static_cast<int>(initialStates[i].x),
+    static_cast<int>(initialStates[i].y)
+));
     }
 
     currentStep = 0;
@@ -439,15 +471,29 @@ for (Robot* robot : order)
         int dx = static_cast<int>(robot->getDestX());
         int dy = static_cast<int>(robot->getDestY());
 
-        // Already arrived.
-        if (x == dx && y == dy)
-        {
-            robot->setStatus("Arrived");
-            continue;
-        }
+        // Check whether the robot has reached its current destination.
+if (x == dx && y == dy)
+{
+    if (robot->hasMoreDestinations())
+    {
+        robot->moveToNextDestination();
 
-        // This robot is not finished yet.
-        allFinished = false;
+        dx = static_cast<int>(robot->getDestX());
+        dy = static_cast<int>(robot->getDestY());
+
+        log() << "Robot " << robot->getID()
+              << " reached a destination. Next destination: ("
+              << dx << ", " << dy << ")\n";
+    }
+    else
+    {
+        robot->setStatus("Arrived");
+        continue;
+    }
+}
+
+// This robot is not finished yet.
+allFinished = false;
 
         if (!robot->hasBattery())
         {
@@ -591,6 +637,9 @@ for (int moveCount = 1;
 
     robotMoved = true;
     anyMoved = true;
+    robotPaths[robotIndex].push_back(
+    make_pair(nextX, nextY)
+);
 
     reservedCells.push_back(make_pair(nextX, nextY));
 
@@ -609,10 +658,25 @@ robot->consumeBattery(batteryUsed);
           << ", " << nextY << ")\n";
 
     if (nextX == dx && nextY == dy)
+{
+    if (robot->hasMoreDestinations())
+    {
+        robot->moveToNextDestination();
+
+        robot->setStatus("Moving");
+
+        log() << "Robot " << robot->getID()
+              << " reached a destination. Next destination: ("
+              << robot->getDestX() << ", "
+              << robot->getDestY() << ")\n";
+    }
+    else
     {
         robot->setStatus("Arrived");
-        break;
     }
+
+    break;
+}
 
     if (!robot->hasBattery())
     {

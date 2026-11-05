@@ -52,8 +52,10 @@ public:
     bool resetSimulation();
 
     // Retrieve simulation information.
-    std::vector<RobotState> getRobotStates() const;
+// Retrieve simulation information.
+std::vector<RobotState> getRobotStates() const;
 
+std::vector<std::vector<std::pair<int, int>>> getRobotPaths() const;
     std::string getStatus() const;
     std::string getErrorMessage() const;
     int getCurrentStep() const;

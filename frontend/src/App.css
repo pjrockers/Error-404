@@ -492,6 +492,43 @@
   color: #ffffff;
 }
 
+/* Robot movement trails */
+.history-mini-cell.trail-0 {
+  background: #0e7490;
+  border-color: #22d3ee;
+}
+
+.history-mini-cell.trail-1 {
+  background: #7c3aed;
+  border-color: #a78bfa;
+}
+
+.history-mini-cell.trail-2 {
+  background: #15803d;
+  border-color: #4ade80;
+}
+
+.history-mini-cell.trail-3 {
+  background: #c2410c;
+  border-color: #fb923c;
+}
+
+.history-mini-cell.trail-4 {
+  background: #be185d;
+  border-color: #f472b6;
+}
+
+.history-mini-cell.trail-5 {
+  background: #a16207;
+  border-color: #facc15;
+}
+
+/* Keep robot markers visible above their trails */
+.history-mini-cell.occupied {
+  background: #2563eb;
+  border: 2px solid #ffffff;
+  color: #ffffff;
+}
 .history-visual-section h4 {
   color: #e2e8f0;
 }
@@ -504,4 +541,155 @@
   .history-grid-comparison {
     grid-template-columns: 1fr;
   }
+}
+
+/* Custom Attributes Section */
+.custom-attributes-section {
+  margin: 20px 0;
+  padding: 18px;
+  background: #101622;
+  border: 1px solid #222c3e;
+  border-radius: 12px;
+  color: #e8edf7;
+}
+
+.custom-attributes-section h4 {
+  margin: 0 0 14px;
+  color: #cbd5e5;
+  font-size: 13px;
+}
+
+.custom-attribute-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px;
+  background: #0b1220;
+  border: 1px solid #26334a;
+  border-radius: 9px;
+}
+
+.custom-attribute-row input {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  color: #e8edf7;
+  background: #0b1220;
+  border: 1px solid #344158;
+  border-radius: 8px;
+}
+
+.custom-attribute-row input:focus {
+  outline: none;
+  border-color: #8b72ff;
+}
+
+.custom-attributes-section .add-attribute-button {
+  margin-top: 4px;
+}
+
+@media (max-width: 600px) {
+  .custom-attribute-row {
+    flex-wrap: wrap;
+  }
+
+  .custom-attribute-row input {
+    flex-basis: 100%;
+  }
+}
+
+.custom-attributes-section h4 {
+  margin: 0 0 14px;
+  color: inherit;
+}
+
+.custom-attribute-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--border-color, #2d3545);
+  border-radius: 9px;
+}
+
+.custom-attribute-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.custom-attributes-section .add-attribute-button {
+  margin-top: 4px;
+}
+
+@media (max-width: 600px) {
+  .custom-attribute-row {
+    flex-wrap: wrap;
+  }
+
+  .custom-attribute-row input {
+    flex-basis: 100%;
+  }
+}
+/* Fix white Custom Attribute inputs and buttons */
+.custom-attributes-section input {
+  background: #0b1220 !important;
+  color: #e8edf7 !important;
+  border: 1px solid #344158 !important;
+  border-radius: 8px;
+  padding: 11px 12px;
+}
+
+.custom-attributes-section input::placeholder {
+  color: #8792a8 !important;
+}
+
+.custom-attributes-section button {
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Remove button */
+.custom-attributes-section .delete-button {
+  background: transparent !important;
+  color: #ff8585 !important;
+  border: 1px solid #7f3038 !important;
+}
+
+/* Add Attribute button */
+.custom-attributes-section .add-attribute-button {
+  background: #151c2a !important;
+  color: #c7d0e1 !important;
+  border: 1px solid #303a4e !important;
+}
+
+.custom-attributes-section .add-attribute-button:hover {
+  background: #202a3b !important;
+}
+
+.robot-custom-attributes p {
+  margin: 4px 0;
+  font-size: 12px;
+  color: #9ba8bd;
+}
+
+.show-attributes-button {
+  margin-top: 5px;
+  padding: 4px 0;
+  border: none;
+  background: transparent;
+  color: #9b87ff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.show-attributes-button:hover {
+  color: #b5a7ff;
 }

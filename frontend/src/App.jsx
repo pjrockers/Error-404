@@ -7,6 +7,8 @@ import {
   logoutUser,
   getRobotTemplates,
   saveRobotTemplate,
+  updateRobotTemplate,
+  deleteRobotTemplate,
   getRobots,
   createRobot,
   updateRobot,
@@ -19,6 +21,7 @@ import {
   getSimulationState,
   saveSimulationHistory,
 getSimulationHistory,
+setPlaybackSpeed,
 } from "./api";
 
 const initialRobots = [
@@ -33,11 +36,16 @@ const [templatesLoading, setTemplatesLoading] = useState(false);
 const [templateError, setTemplateError] = useState("");
 const [templateName, setTemplateName] = useState("");
 const [templateType, setTemplateType] = useState("Delivery");
+const [customAttributes, setCustomAttributes] = useState([
+  { key: "", value: "" },
+]);
+const [customRobotType, setCustomRobotType] = useState("");
 const [templateBattery, setTemplateBattery] = useState(100);
 const [templateSpeed, setTemplateSpeed] = useState(5);
 const [templatePriority, setTemplatePriority] = useState(2);
 const [templateCapacity, setTemplateCapacity] = useState(10);
 const [savingTemplate, setSavingTemplate] = useState(false);
+const [editingTemplateId, setEditingTemplateId] = useState(null);
 const [deletingRobotId, setDeletingRobotId] = useState(null); 
   const [token, setToken] = useState(
     () => localStorage.getItem("robotSwarmToken")
@@ -46,6 +54,8 @@ const [deletingRobotId, setDeletingRobotId] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
   
   const [simulationStatus, setSimulationStatus] = useState("not_configured");
+  const [playbackDelay, setPlaybackDelay] = useState(500);
+const [playbackSpeedLoading, setPlaybackSpeedLoading] = useState(false);
 
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -53,7 +63,7 @@ const [deletingRobotId, setDeletingRobotId] = useState(null);
 
   const historySavedRef = useRef(false);
   const startingPositionsRef = useRef([]);
-
+  const [robotCreationError, setRobotCreationError] = useState("");
   
   useEffect(() => {
     let cancelled = false;
@@ -190,37 +200,186 @@ async function handleDeleteRobot(id) {
     setDeletingRobotId(null);
   }
 }
-  async function handleSaveTemplate(event) {
-    event.preventDefault();
+function addCustomAttribute() {
+  setCustomAttributes((previous) => [
+    ...previous,
+    { key: "", value: "" },
+  ]);
+}
+
+function updateCustomAttribute(index, field, value) {
+  setCustomAttributes((previous) =>
+    previous.map((attribute, i) =>
+      i === index
+        ? { ...attribute, [field]: value }
+        : attribute
+    )
+  );
+}
+
+function removeCustomAttribute(index) {
+  setCustomAttributes((previous) =>
+    previous.filter((_, i) => i !== index)
+  );
+}
+function handleEditTemplate(template) {
+  setEditingTemplateId(template.id);
+
+  setTemplateName(template.template_name);
+
+  const builtInTypes = [
+    "General",
+    "Delivery",
+    "Rescue",
+    "Inspection",
+  ];
+
+  if (builtInTypes.includes(template.robot_type)) {
+    setTemplateType(template.robot_type);
+    setCustomRobotType("");
+  } else {
+    setTemplateType("Custom");
+    setCustomRobotType(template.robot_type);
+  }
+
+  setTemplateBattery(template.battery);
+  setTemplateSpeed(template.speed);
+  setTemplatePriority(template.priority);
+
+  const attributes = template.attributes || {};
+
+  setTemplateCapacity(attributes.packageCapacity ?? 10);
+
+  setCustomAttributes(
+    Object.entries(attributes)
+      .filter(([key]) => key !== "packageCapacity")
+      .map(([key, value]) => ({
+        key,
+        value: String(value),
+      }))
+  );
+
+  setTemplateError("");
+}
+async function handleDeleteTemplate(template) {
+  const confirmed = window.confirm(
+    `Are you sure you want to delete "${template.template_name}"?`
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
     setTemplateError("");
 
-    if (!templateName.trim()) {
-      setTemplateError("Enter a template name.");
+    await deleteRobotTemplate(token, template.id);
+
+    await loadTemplates();
+  } catch (error) {
+    setTemplateError(
+      error.message || "Could not delete robot template."
+    );
+  }
+}
+async function handleSaveTemplate(event) {
+  event.preventDefault();
+  setTemplateError("");
+
+  if (!templateName.trim()) {
+    setTemplateError("Enter a template name.");
+    return;
+  }
+
+  const finalRobotType =
+    templateType === "Custom"
+      ? customRobotType.trim()
+      : templateType;
+
+  if (!finalRobotType) {
+    setTemplateError("Enter a custom robot type.");
+    return;
+  }
+
+  if (finalRobotType.length > 50) {
+    setTemplateError("Robot type cannot exceed 50 characters.");
+    return;
+  }
+
+  // Build the attributes object
+  const attributes = {};
+
+  for (const attribute of customAttributes) {
+    const key = attribute.key.trim();
+    const value = attribute.value.trim();
+
+    // Ignore completely empty rows
+    if (!key && !value) {
+      continue;
+    }
+
+    if (!key || !value) {
+      setTemplateError("Complete both fields for every attribute.");
       return;
     }
 
-    setSavingTemplate(true);
+    if (Object.prototype.hasOwnProperty.call(attributes, key)) {
+      setTemplateError(`Duplicate attribute name: ${key}`);
+      return;
+    }
 
-    try {
-      await saveRobotTemplate(token, {
-        template_name: templateName.trim(),
-        robot_type: templateType,
-        battery: Number(templateBattery),
-        speed: Number(templateSpeed),
-        priority: Number(templatePriority),
-        attributes: {
-          packageCapacity: Number(templateCapacity),
-        },
-      });
-
-      setTemplateName("");
-      await loadTemplates();
-    } catch (error) {
-      setTemplateError(error.message || "Could not save template.");
-    } finally {
-      setSavingTemplate(false);
+    // Convert numeric values into numbers
+    if (value !== "" && !isNaN(value)) {
+      attributes[key] = Number(value);
+    } else if (value.toLowerCase() === "true") {
+      attributes[key] = true;
+    } else if (value.toLowerCase() === "false") {
+      attributes[key] = false;
+    } else {
+      attributes[key] = value;
     }
   }
+
+  // Preserve Delivery's existing package capacity field
+  if (finalRobotType === "Delivery") {
+    attributes.packageCapacity = Number(templateCapacity);
+  }
+
+  setSavingTemplate(true);
+
+  try {
+    const templateData = {
+  template_name: templateName.trim(),
+  robot_type: finalRobotType,
+  battery: Number(templateBattery),
+  speed: Number(templateSpeed),
+  priority: Number(templatePriority),
+  attributes,
+};
+
+if (editingTemplateId !== null) {
+  await updateRobotTemplate(
+    token,
+    editingTemplateId,
+    templateData
+  );
+} else {
+  await saveRobotTemplate(token, templateData);
+}
+
+    setTemplateName("");
+    setCustomRobotType("");
+    setTemplateType("Delivery");
+    setCustomAttributes([{ key: "", value: "" }]);
+    setEditingTemplateId(null);
+
+    await loadTemplates();
+  } catch (error) {
+    setTemplateError(error.message || "Could not save template.");
+  } finally {
+    setSavingTemplate(false);
+  }
+}
   useEffect(() => {
     if (token && user) {
       loadTemplates();
@@ -235,11 +394,14 @@ async function handleDeleteRobot(id) {
   }
 }, [token, user]);
 function handleEditRobot(robot) {
-  console.log("Robot selected for editing:", robot);
-  console.log("Robot ID:", robot.id);
-
   setEditingRobot(robot);
   setEditRobotName(robot.name);
+  setEditCustomAttributes(
+    Object.entries(robot.attributes || {}).map(([key, value]) => ({
+      key,
+      value: String(value),
+    }))
+  );
   setRobotsError("");
 }
   function handleLogin(newToken) {
@@ -270,6 +432,7 @@ function handleEditRobot(robot) {
   const [editingRobot, setEditingRobot] = useState(null);
   const [editRobotName, setEditRobotName] = useState("");
   const [savingRobotEdit, setSavingRobotEdit] = useState(false);
+  const [editCustomAttributes, setEditCustomAttributes] = useState([]);
   const [selectedRobotId, setSelectedRobotId] = useState(null);
   const [obstacles, setObstacles] = useState([]);
   const [selectedTool, setSelectedTool] = useState("obstacle");
@@ -312,12 +475,14 @@ useEffect(() => {
           ? data.robots
           : [];
 
-        const result = [
+        const robotPaths = Array.isArray(data.paths) ? data.paths : [];
+
+const result = [
   `Final status: ${data.status}`,
   `Total steps: ${data.current_step}`,
   "",
   "Robot results:",
-  ...finalRobots.map((robot) => {
+  ...finalRobots.map((robot, index) => {
     const start = startingPositionsRef.current.find(
       (item) => item.id === Number(robot.id)
     );
@@ -328,10 +493,17 @@ useEffect(() => {
 
     const finalPosition = `(${robot.x}, ${robot.y})`;
 
+    const path = robotPaths[index] || [];
+
+    const pathText = path
+      .map((cell) => `(${cell.x}, ${cell.y})`)
+      .join(" -> ");
+
     return [
       `${robot.name}:`,
       `  Starting position: ${startPosition}`,
       `  Final position: ${finalPosition}`,
+      `  Movement path: ${pathText || "Not recorded"}`,
       `  Status: ${robot.status}`,
       `  Battery: ${robot.battery}%`,
     ].join("\n");
@@ -482,52 +654,69 @@ async function handleConfigureSimulation() {
     return;
   }
 for (const robot of robots) {
-  const destination = robotDestinations[robot.id];
+  const destinations = robotDestinations[robot.id] || [
+    { x: "", y: "" },
+  ];
 
-  if (
-    !destination ||
-    destination.destX === "" ||
-    destination.destY === "" ||
-    destination.destX === undefined ||
-    destination.destY === undefined
-  ) {
-    setSimulationError(`Enter both destination coordinates for ${robot.name}.`);
-    return;
-  }
-}
+  for (let i = 0; i < destinations.length; i++) {
+    const destination = destinations[i];
 
-const configuredRobots = robots.map((robot) => {
-    const destination = robotDestinations[robot.id] || {};
-
-    return {
-      id: Number(robot.id),
-      name: robot.name,
-      type: robot.type || "General",
-      x: Number(robot.x),
-      y: Number(robot.y),
-      destX: Number(destination.destX),
-      destY: Number(destination.destY),
-      battery: Number(robot.battery),
-      speed: Number(robot.speed ?? 5),
-      priority: Number(robot.priority ?? 1),
-    };
-  });
-
-  for (const robot of configuredRobots) {
     if (
-      !Number.isInteger(robot.destX) ||
-      !Number.isInteger(robot.destY) ||
-      robot.destX < 0 ||
-      robot.destX >= cols ||
-      robot.destY < 0 ||
-      robot.destY >= rows
+      destination.x === "" ||
+      destination.y === "" ||
+      destination.x === undefined ||
+      destination.y === undefined
     ) {
       setSimulationError(
-        `Enter a valid destination for ${robot.name}.`
+        `Complete Destination ${i + 1} for ${robot.name}.`
+      );
+      return;
+    }
+
+    const x = Number(destination.x);
+    const y = Number(destination.y);
+
+    if (
+      !Number.isInteger(x) ||
+      !Number.isInteger(y) ||
+      x < 0 || x >= cols ||
+      y < 0 || y >= rows
+    ) {
+      setSimulationError(
+        `Invalid coordinates for Destination ${i + 1} of ${robot.name}.`
       );
       return;
     }
   }
+}
+
+const configuredRobots = robots.map((robot) => {
+  const destinations = (
+    robotDestinations[robot.id] || [{ x: "", y: "" }]
+  ).map((destination) => ({
+    x: Number(destination.x),
+    y: Number(destination.y),
+  }));
+
+  return {
+    id: Number(robot.id),
+    name: robot.name,
+    type: robot.type || "General",
+    x: Number(robot.x),
+    y: Number(robot.y),
+
+    // First destination (for backward compatibility)
+    destX: destinations[0].x,
+    destY: destinations[0].y,
+
+    // Complete destination sequence
+    destinations,
+
+    battery: Number(robot.battery),
+    speed: Number(robot.speed ?? 5),
+    priority: Number(robot.priority ?? 1),
+  };
+});
   startingPositionsRef.current = configuredRobots.map((robot) => ({
   id: robot.id,
   name: robot.name,
@@ -611,24 +800,78 @@ async function handleResetSimulation() {
     setSimulationLoading(false);
   }
 }
-function updateRobotDestination(robotId, field, value) {
+async function handlePlaybackSpeedChange(event) {
+  const delay = Number(event.target.value);
+
+  setPlaybackSpeedLoading(true);
+  setSimulationError("");
+
+  try {
+    await setPlaybackSpeed(token, delay);
+    setPlaybackDelay(delay);
+  } catch (error) {
+    setSimulationError(
+      error.message || "Could not change playback speed."
+    );
+  } finally {
+    setPlaybackSpeedLoading(false);
+  }
+}
+function updateRobotDestination(robotId, index, field, value) {
+  setRobotDestinations((current) => {
+    const destinations = [
+      ...(current[robotId] || [{ x: "", y: "" }]),
+    ];
+
+    destinations[index] = {
+      ...destinations[index],
+      [field]: value,
+    };
+
+    return {
+      ...current,
+      [robotId]: destinations,
+    };
+  });
+}
+
+function addRobotDestination(robotId) {
   setRobotDestinations((current) => ({
     ...current,
-    [robotId]: {
-      ...current[robotId],
-      [field]: value,
-    },
+    [robotId]: [
+      ...(current[robotId] || [{ x: "", y: "" }]),
+      { x: "", y: "" },
+    ],
   }));
+}
+
+function removeRobotDestination(robotId, index) {
+  setRobotDestinations((current) => {
+    const destinations = [
+      ...(current[robotId] || [{ x: "", y: "" }]),
+    ];
+
+    if (destinations.length <= 1) return current;
+
+    destinations.splice(index, 1);
+
+    return {
+      ...current,
+      [robotId]: destinations,
+    };
+  });
 }
 async function createRobotFromTemplate(event) {
   event.preventDefault();
+
+  setRobotCreationError("");
 
   const template = templates.find(
     (item) => String(item.id) === String(selectedTemplateId)
   );
 
   if (!template) {
-    setTemplateError("Please select a saved template.");
+    setRobotCreationError("Please select a saved template.");
     return;
   }
 
@@ -643,61 +886,55 @@ async function createRobotFromTemplate(event) {
     x >= cols ||
     y >= rows
   ) {
-    setTemplateError("Starting coordinates must be inside the grid.");
+    setRobotCreationError("Starting coordinates must be inside the grid.");
     return;
   }
 
   if (obstacles.some((cell) => cell.x === x && cell.y === y)) {
-    setTemplateError("A robot cannot start on an obstacle.");
+    setRobotCreationError("A robot cannot start on an obstacle.");
     return;
   }
 
   if (robots.some((robot) => robot.x === x && robot.y === y)) {
-    setTemplateError("Another robot already occupies that cell.");
+    setRobotCreationError("Another robot already occupies that cell.");
     return;
   }
 
-  
-setTemplateError("");
-setRobotsError("");
-
-const robotToCreate = {
-  name: newRobotName.trim() || `Robot ${Date.now()}`,
-  type: template.robot_type,
-  x,
-  y,
-  battery: Number(template.battery),
-  speed: Number(template.speed),
-  priority: Number(template.priority),
-  attributes: template.attributes || {},
-  status: "Idle",
-};
-
-try {
-  const result = await createRobot(token, robotToCreate);
-
-  if (!result.id) {
-    throw new Error("The server did not return the saved robot ID.");
-  }
-
-  const savedRobot = {
-    ...robotToCreate,
-    id: Number(result.id),
+  const robotToCreate = {
+    name: newRobotName.trim() || `Robot ${Date.now()}`,
+    type: template.robot_type,
+    x,
+    y,
+    battery: Number(template.battery),
+    speed: Number(template.speed),
+    priority: Number(template.priority),
+    attributes: template.attributes || {},
+    status: "Idle",
   };
 
-  setRobots((current) => [...current, savedRobot]);
+  try {
+    const result = await createRobot(token, robotToCreate);
 
-  setNewRobotName("");
-  setSelectedTemplateId("");
-  setTemplateError("");
-} catch (error) {
-  setTemplateError(error.message || "Could not create robot.");
-}
+    if (!result.id) {
+      throw new Error("The server did not return the saved robot ID.");
+    }
 
+    const savedRobot = {
+      ...robotToCreate,
+      id: Number(result.id),
+    };
 
-  setNewRobotName("");
-  setSelectedTemplateId("");
-  setTemplateError("");
+    setRobots((current) => [...current, savedRobot]);
+
+    setNewRobotName("");
+    setSelectedTemplateId("");
+    setRobotCreationError("");
+
+  } catch (error) {
+    setRobotCreationError(
+      error.message || "Could not create robot."
+    );
+  }
 }
 
  
@@ -956,7 +1193,21 @@ async function addRobot() {
           <span>Priority</span>
           <strong>{selectedRobot.priority ?? 1} / 4</strong>
         </div>
+      
+      
+
+      <div className="inspector-grid">
+        {Object.entries(selectedRobot.attributes).map(
+          ([key, value]) => (
+            <div key={key}>
+              <span>{key}</span>
+              <strong>{String(value)}</strong>
+            </div>
+          )
+        )}
       </div>
+    </div>
+  )
     </div>
   );
 })()}
@@ -1026,6 +1277,21 @@ async function addRobot() {
                   ))}
                 </select>
               </label>
+              <label>
+  Playback speed
+  <select
+    value={playbackDelay}
+    onChange={handlePlaybackSpeedChange}
+    disabled={
+      playbackSpeedLoading ||
+      !["configured", "running", "paused"].includes(simulationStatus)
+    }
+  >
+    <option value={1000}>Slow (1 step/sec)</option>
+    <option value={500}>Normal (2 steps/sec)</option>
+    <option value={200}>Fast (5 steps/sec)</option>
+  </select>
+</label>
             </div>
             <div className="destination-panel">
   <div className="panel-heading">
@@ -1036,45 +1302,89 @@ async function addRobot() {
   </div>
 
   <div className="destination-list">
-    {robots.map((robot) => (
+  {robots.map((robot) => {
+    const destinations = robotDestinations[robot.id] || [
+      { x: "", y: "" },
+    ];
+
+    return (
       <div className="destination-row" key={robot.id}>
         <div className="destination-robot">
           <strong>{robot.name}</strong>
           <span>{robot.type} Robot · ID {robot.id}</span>
         </div>
 
-        <label>
-          Destination X
-          <input
-            type="number"
-            min="0"
-            max={cols - 1}
-            placeholder="X coordinate"
-            value={robotDestinations[robot.id]?.destX ?? ""}
-            disabled={simulationStatus === "running" || simulationStatus === "paused"}
-            onChange={(event) =>
-              updateRobotDestination(robot.id, "destX", event.target.value)
-            }
-          />
-        </label>
+        {destinations.map((destination, index) => (
+          <div className="destination-waypoint" key={index}>
+            <strong>Destination {index + 1}</strong>
 
-        <label>
-          Destination Y
-          <input
-            type="number"
-            min="0"
-            max={rows - 1}
-            placeholder="Y coordinate"
-            value={robotDestinations[robot.id]?.destY ?? ""}
-            disabled={simulationStatus === "running" || simulationStatus === "paused"}
-            onChange={(event) =>
-              updateRobotDestination(robot.id, "destY", event.target.value)
-            }
-          />
-        </label>
+            <label>
+              X coordinate
+              <input
+                type="number"
+                min="0"
+                max={cols - 1}
+                placeholder="X"
+                value={destination.x}
+                disabled={["running", "paused"].includes(simulationStatus)}
+                onChange={(event) =>
+                  updateRobotDestination(
+                    robot.id,
+                    index,
+                    "x",
+                    event.target.value
+                  )
+                }
+              />
+            </label>
+
+            <label>
+              Y coordinate
+              <input
+                type="number"
+                min="0"
+                max={rows - 1}
+                placeholder="Y"
+                value={destination.y}
+                disabled={["running", "paused"].includes(simulationStatus)}
+                onChange={(event) =>
+                  updateRobotDestination(
+                    robot.id,
+                    index,
+                    "y",
+                    event.target.value
+                  )
+                }
+              />
+            </label>
+
+            {destinations.length > 1 && (
+              <button
+                type="button"
+                className="delete-button"
+                disabled={["running", "paused"].includes(simulationStatus)}
+                onClick={() =>
+                  removeRobotDestination(robot.id, index)
+                }
+              >
+                Remove
+              </button>
+            )}
+          </div>
+        ))}
+
+        <button
+          type="button"
+          className="secondary-button"
+          disabled={["running", "paused"].includes(simulationStatus)}
+          onClick={() => addRobotDestination(robot.id)}
+        >
+          + Add Destination
+        </button>
       </div>
-    ))}
-  </div>
+    );
+  })}
+</div>
 </div>
 {simulationError && (
   <p className="auth-error">
@@ -1173,15 +1483,47 @@ async function addRobot() {
     onSubmit={async (event) => {
       event.preventDefault();
 
-      const updatedRobot = {
-        ...editingRobot,
-        name: editRobotName.trim(),
-        battery: Number(editingRobot.battery),
-        speed: Number(editingRobot.speed),
-        priority: Number(editingRobot.priority),
-        x: Number(editingRobot.x),
-        y: Number(editingRobot.y),
-      };
+      const attributes = {};
+
+for (const attribute of editCustomAttributes) {
+  const key = attribute.key.trim();
+  const value = attribute.value.trim();
+
+  if (!key && !value) {
+    continue;
+  }
+
+  if (!key || !value) {
+    setRobotsError("Complete both fields for every attribute.");
+    return;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(attributes, key)) {
+    setRobotsError(`Duplicate attribute name: ${key}`);
+    return;
+  }
+
+  if (!isNaN(value)) {
+    attributes[key] = Number(value);
+  } else if (value.toLowerCase() === "true") {
+    attributes[key] = true;
+  } else if (value.toLowerCase() === "false") {
+    attributes[key] = false;
+  } else {
+    attributes[key] = value;
+  }
+}
+
+const updatedRobot = {
+  ...editingRobot,
+  name: editRobotName.trim(),
+  battery: Number(editingRobot.battery),
+  speed: Number(editingRobot.speed),
+  priority: Number(editingRobot.priority),
+  x: Number(editingRobot.x),
+  y: Number(editingRobot.y),
+  attributes,
+};
 
       
 if (
@@ -1271,6 +1613,7 @@ updatedRobot.priority = priority;
 
         setEditingRobot(null);
         setEditRobotName("");
+        setEditCustomAttributes([]);
       } catch (error) {
         setRobotsError(
           error.message || "Could not update robot."
@@ -1387,7 +1730,47 @@ updatedRobot.priority = priority;
         required
       />
     </label>
+   <div className="custom-attributes-section">
+  <h4>Custom Attributes</h4>
 
+  {customAttributes.map((attribute, index) => (
+    <div key={index} className="custom-attribute-row">
+      <input
+        type="text"
+        placeholder="Attribute name"
+        value={attribute.key}
+        onChange={(event) =>
+          updateCustomAttribute(index, "key", event.target.value)
+        }
+      />
+
+      <input
+        type="text"
+        placeholder="Attribute value"
+        value={attribute.value}
+        onChange={(event) =>
+          updateCustomAttribute(index, "value", event.target.value)
+        }
+      />
+
+      <button
+        type="button"
+        className="delete-button"
+        onClick={() => removeCustomAttribute(index)}
+      >
+        Remove
+      </button>
+    </div>
+  ))}
+
+  <button
+    type="button"
+    className="secondary-button add-attribute-button"
+    onClick={addCustomAttribute}
+  >
+    + Add Attribute
+  </button>
+</div>
     {robotsError && (
       <p className="auth-error">{robotsError}</p>
     )}
@@ -1409,6 +1792,7 @@ updatedRobot.priority = priority;
           setEditingRobot(null);
           setEditRobotName("");
           setRobotsError("");
+          setEditCustomAttributes([]);
         }}
       >
         Cancel
@@ -1423,7 +1807,47 @@ updatedRobot.priority = priority;
         <p>Save a reusable robot configuration to your database.</p>
       </div>
     </div>
+   <div className="custom-attributes-section">
+  <h4>Custom Attributes</h4>
 
+  {customAttributes.map((attribute, index) => (
+    <div key={index} className="custom-attribute-row">
+      <input
+        type="text"
+        placeholder="Name"
+        value={attribute.key}
+        onChange={(event) =>
+          updateCustomAttribute(index, "key", event.target.value)
+        }
+      />
+
+      <input
+        type="text"
+        placeholder="Value"
+        value={attribute.value}
+        onChange={(event) =>
+          updateCustomAttribute(index, "value", event.target.value)
+        }
+      />
+
+      <button
+        type="button"
+        className="delete-button"
+        onClick={() => removeCustomAttribute(index)}
+      >
+        Remove
+      </button>
+    </div>
+  ))}
+
+  <button
+    type="button"
+    className="secondary-button add-attribute-button"
+    onClick={addCustomAttribute}
+  >
+    + Add Attribute
+  </button>
+</div>
     <form onSubmit={handleSaveTemplate} className="template-form">
       <label>
         Template name
@@ -1437,17 +1861,34 @@ updatedRobot.priority = priority;
       </label>
 
       <label>
-        Robot type
-        <select
-          value={templateType}
-          onChange={(event) => setTemplateType(event.target.value)}
-        >
-          <option value="General">General</option>
-          <option value="Delivery">Delivery</option>
-          <option value="Rescue">Rescue</option>
-          <option value="Inspection">Inspection</option>
-        </select>
-      </label>
+  Robot type
+  <select
+    value={templateType}
+    onChange={(event) => setTemplateType(event.target.value)}
+  >
+    <option value="General">General</option>
+    <option value="Delivery">Delivery</option>
+    <option value="Rescue">Rescue</option>
+    <option value="Inspection">Inspection</option>
+    <option value="Custom">Custom</option>
+  </select>
+</label>
+
+{templateType === "Custom" && (
+  <label>
+    Custom robot type name
+    <input
+      type="text"
+      value={customRobotType}
+      onChange={(event) =>
+        setCustomRobotType(event.target.value)
+      }
+      maxLength={50}
+      placeholder="e.g. Agriculture, Medical, Surveillance"
+      required
+    />
+  </label>
+)}
 
       <label>
         Battery (%)
@@ -1506,8 +1947,33 @@ updatedRobot.priority = priority;
       )}
 
       <button className="primary-button" disabled={savingTemplate}>
-        {savingTemplate ? "Saving..." : "Save template"}
-      </button>
+  {savingTemplate
+    ? "Saving..."
+    : editingTemplateId !== null
+      ? "Save Changes"
+      : "Save Template"}
+</button>
+
+{editingTemplateId !== null && (
+  <button
+    type="button"
+    className="delete-button"
+    onClick={() => {
+      setEditingTemplateId(null);
+      setTemplateName("");
+      setTemplateType("Delivery");
+      setCustomRobotType("");
+      setTemplateBattery(100);
+      setTemplateSpeed(5);
+      setTemplatePriority(2);
+      setTemplateCapacity(10);
+      setCustomAttributes([{ key: "", value: "" }]);
+      setTemplateError("");
+    }}
+  >
+    Cancel Editing
+  </button>
+)}
     </form>
 
     <div style={{ marginTop: 28 }}>
@@ -1566,6 +2032,11 @@ updatedRobot.priority = priority;
         required
       />
     </label>
+    {robotCreationError && (
+  <p className="auth-error">
+    {robotCreationError}
+  </p>
+)}
 
     <button
       className="primary-button"
@@ -1592,9 +2063,25 @@ updatedRobot.priority = priority;
             <p>Battery: {template.battery}%</p>
             <p>Speed: {template.speed}</p>
             <p>Priority: {template.priority}</p>
-            <p>
-              Attributes: {JSON.stringify(template.attributes)}
-            </p>
+            {Object.entries(template.attributes || {}).map(([key, value]) => (
+  <p key={key}>
+    {key}: {String(value)}
+  </p>
+))}
+<button
+  type="button"
+  className="edit-button"
+  onClick={() => handleEditTemplate(template)}
+>
+  Edit Template
+</button>
+<button
+  type="button"
+  className="delete-button"
+  onClick={() => handleDeleteTemplate(template)}
+>
+  Delete Template
+</button>
           </div>
         ))}
       </div>
@@ -1738,26 +2225,37 @@ function StatCard({ label, value, detail, icon }) {
 
 function HistoryMiniGrid({ rows, cols, result, positionType }) {
   const robotPositions = [];
-  const robotBlocks = result.split("\n\n");
-
-  robotBlocks.forEach((block) => {
-    const nameMatch = block.match(/Robot results:\s*([\s\S]*)/);
-    if (!nameMatch) return;
-  });
+  const robotPaths = [];
 
   const matches = [
     ...result.matchAll(
-      /([^\n]+):\n\s+Starting position: \((\d+), (\d+)\)\n\s+Final position: \((\d+), (\d+)\)/g
+      /([^\n]+):\n\s+Starting position: \((\d+), (\d+)\)\n\s+Final position: \((\d+), (\d+)\)\n\s+Movement path: ([^\n]*)/g
     ),
   ];
 
-  matches.forEach((match) => {
-    const isStarting = positionType === "start";
+  matches.forEach((match, index) => {
+    const path = match[6]
+      .match(/\((\d+), (\d+)\)/g) || [];
+
+    const cells = path.map((cell) => {
+      const coordinates = cell.match(/\((\d+), (\d+)\)/);
+
+      return {
+        x: Number(coordinates[1]),
+        y: Number(coordinates[2]),
+      };
+    });
+
+    robotPaths.push({
+      name: match[1].trim(),
+      cells,
+      index,
+    });
 
     robotPositions.push({
       name: match[1].trim(),
-      x: Number(isStarting ? match[2] : match[4]),
-      y: Number(isStarting ? match[3] : match[5]),
+      x: Number(positionType === "start" ? match[2] : match[4]),
+      y: Number(positionType === "start" ? match[3] : match[5]),
     });
   });
 
@@ -1777,14 +2275,22 @@ function HistoryMiniGrid({ rows, cols, result, positionType }) {
             (item) => item.x === x && item.y === y
           );
 
+          const trail = robotPaths.find((item) =>
+            item.cells.some((cell) => cell.x === x && cell.y === y)
+          );
+
           return (
             <div
               key={`${x}-${y}`}
-              className={`history-mini-cell ${robot ? "occupied" : ""}`}
+              className={`history-mini-cell ${
+                trail ? `trail-${trail.index % 6}` : ""
+              } ${robot ? "occupied" : ""}`}
               title={
                 robot
                   ? `${robot.name} (${x}, ${y})`
-                  : `(${x}, ${y})`
+                  : trail
+                    ? `${trail.name}'s path (${x}, ${y})`
+                    : `(${x}, ${y})`
               }
             >
               {robot ? robot.name.slice(0, 1).toUpperCase() : ""}
@@ -1858,6 +2364,7 @@ function RobotList({
   deletingRobotId,
   onEdit,
 }) {
+  const [expandedRobots, setExpandedRobots] = useState({});
   if (!robots.length) {
     return <p className="empty-state">No robots added yet.</p>;
   }
@@ -1875,6 +2382,32 @@ function RobotList({
             <p>
               {robot.type} · ID {robot.id} · ({robot.x}, {robot.y})
             </p>
+           {Object.entries(robot.attributes || {}).length > 0 && (
+  <div className="robot-custom-attributes">
+    {Object.entries(robot.attributes || {})
+      .slice(0, expandedRobots[robot.id] ? undefined : 2)
+      .map(([key, value]) => (
+        <p key={key}>
+          {key}: {String(value)}
+        </p>
+      ))}
+
+    {Object.entries(robot.attributes || {}).length > 2 && (
+      <button
+        type="button"
+        className="show-attributes-button"
+        onClick={() =>
+          setExpandedRobots((previous) => ({
+            ...previous,
+            [robot.id]: !previous[robot.id],
+          }))
+        }
+      >
+        {expandedRobots[robot.id] ? "Show Less" : "Show More"}
+      </button>
+    )}
+  </div>
+)}
           </div>
 
           <div className="robot-battery">

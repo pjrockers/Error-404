@@ -266,6 +266,18 @@ vector<RobotState> SimulationController::getRobotStates() const
     return swarm->getRobotStates();
 }
 
+// Return a safe copy of all robot movement paths.
+vector<vector<pair<int, int>>> SimulationController::getRobotPaths() const
+{
+    lock_guard<mutex> lock(simulationMutex);
+
+    if (!swarm)
+    {
+        return vector<vector<pair<int, int>>>();
+    }
+
+    return swarm->getRobotPaths();
+}
 // Return the current simulation status.
 string SimulationController::getStatus() const
 {

@@ -7,7 +7,7 @@
 #include "auth.h"
 
 #include <nlohmann/json.hpp>
-
+#include <iostream>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -27,20 +27,28 @@ class UserSimulation
 {
 public:
     SimulationController controller;
+    
 
 private:
     thread worker;
     atomic<bool> stopWorker;
     mutex workerMutex;
+    atomic<int> playbackDelay;
 
 public:
-    UserSimulation() : stopWorker(false) {}
-
+UserSimulation()
+    : stopWorker(false),
+      playbackDelay(500)
+{
+}
     ~UserSimulation()
     {
         stop();
     }
-
+void setPlaybackSpeed(int delay)
+{
+    playbackDelay = delay;
+}
     void startWorker()
     {
         lock_guard<mutex> lock(workerMutex);
@@ -72,8 +80,9 @@ public:
 
                 controller.stepSimulation();
 
-                this_thread::sleep_for(chrono::milliseconds(500));
-            }
+this_thread::sleep_for(
+    chrono::milliseconds(playbackDelay.load())
+);            }
         });
     }
 
@@ -122,6 +131,25 @@ static json buildStateResponse(UserSimulation& simulation)
     response["error"] = simulation.controller.getErrorMessage();
 
     vector<RobotState> states = simulation.controller.getRobotStates();
+    vector<vector<pair<int, int>>> paths =
+    simulation.controller.getRobotPaths();
+
+response["paths"] = json::array();
+
+for (size_t i = 0; i < paths.size(); i++)
+{
+    json robotPath = json::array();
+
+    for (size_t j = 0; j < paths[i].size(); j++)
+    {
+        robotPath.push_back({
+            {"x", paths[i][j].first},
+            {"y", paths[i][j].second}
+        });
+    }
+
+    response["paths"].push_back(robotPath);
+}
 
     response["robots"] = json::array();
 
@@ -285,8 +313,44 @@ void registerSimulationRoutes(httplib::Server& server)
                     throw runtime_error("Invalid robot starting position.");
                 }
 
-                robot->setDestination(destX, destY);
+// Support multiple destinations if provided.
+if (item.contains("destinations"))
+{
+    if (!item["destinations"].is_array() ||
+        item["destinations"].empty())
+    {
+        throw runtime_error(
+            "Destinations must be a non-empty array."
+        );
+    }
 
+    robot->clearDestinations();
+
+    for (size_t j = 0; j < item["destinations"].size(); j++)
+    {
+        const json& destination = item["destinations"][j];
+
+        if (!destination.contains("x") ||
+            !destination.contains("y"))
+        {
+            throw runtime_error("Invalid destination data.");
+        }
+
+        double dx = destination["x"].get<double>();
+        double dy = destination["y"].get<double>();
+
+        robot->addDestination(dx, dy);
+        cout << "Robot " << id
+     << " destination " << j + 1
+     << ": (" << dx << ", " << dy << ")\n";
+
+    }
+}
+else
+{
+    // Backward compatibility with single-destination robots.
+    robot->setDestination(destX, destY);
+}
                 if (item.contains("battery") &&
                     !robot->setBattery(item["battery"].get<double>()))
                 {
@@ -334,6 +398,72 @@ void registerSimulationRoutes(httplib::Server& server)
             );
         }
     });
+    // -------------------------------------------------
+// CHANGE PLAYBACK SPEED
+// -------------------------------------------------
+server.Post("/simulation/speed",
+    [](const httplib::Request& req, httplib::Response& res)
+{
+    sqlite3_int64 userId;
+
+    if (!getUserIdFromRequest(req, userId))
+    {
+        res.status = 401;
+        res.set_content(
+            R"({"error":"Unauthorized"})",
+            "application/json"
+        );
+        return;
+    }
+
+    try
+    {
+        json body = json::parse(req.body);
+
+        if (!body.contains("delay"))
+        {
+            res.status = 400;
+            res.set_content(
+                R"({"error":"Missing playback delay"})",
+                "application/json"
+            );
+            return;
+        }
+
+        int delay = body["delay"].get<int>();
+
+        if (delay != 1000 && delay != 500 && delay != 200)
+        {
+            res.status = 400;
+            res.set_content(
+                R"({"error":"Delay must be 1000, 500, or 200"})",
+                "application/json"
+            );
+            return;
+        }
+
+        shared_ptr<UserSimulation> simulation =
+            getOrCreateSimulation(userId);
+
+        simulation->setPlaybackSpeed(delay);
+
+        json response = buildStateResponse(*simulation);
+        response["playback_delay"] = delay;
+
+        res.set_content(
+            response.dump(),
+            "application/json"
+        );
+    }
+    catch (const exception& e)
+    {
+        res.status = 400;
+        res.set_content(
+            json({{"error", e.what()}}).dump(),
+            "application/json"
+        );
+    }
+});
 
     // -------------------------------------------------
     // START SIMULATION

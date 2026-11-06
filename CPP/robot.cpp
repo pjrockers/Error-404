@@ -12,10 +12,10 @@ Robot::Robot(int robotID, string robotName, string robotType)
       y(0),
       destX(0),
       destY(0),
+      currentDestinationIndex(0),
       battery(100),
       speed(5),
       priority(1),
-      currentDestinationIndex(0),
       status("Idle")
 {
 }

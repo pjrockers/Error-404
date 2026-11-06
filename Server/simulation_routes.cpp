@@ -27,7 +27,8 @@ class UserSimulation
 {
 public:
     SimulationController controller;
-    
+    vector<json> replaySteps;
+    mutex replayMutex;
 
 private:
     thread worker;
@@ -40,6 +41,69 @@ UserSimulation()
     : stopWorker(false),
       playbackDelay(500)
 {
+}
+void captureReplaySnapshot()
+{
+    json snapshot;
+snapshot["step"] = controller.getCurrentStep();
+
+// Save grid dimensions.
+snapshot["grid_rows"] = controller.getGridRows();
+snapshot["grid_cols"] = controller.getGridCols();
+
+// Save obstacle positions.
+snapshot["obstacles"] = json::array();
+
+vector<pair<int, int>> obstacles = controller.getObstacles();
+
+for (size_t i = 0; i < obstacles.size(); i++)
+{
+    snapshot["obstacles"].push_back({
+        {"x", obstacles[i].first},
+        {"y", obstacles[i].second}
+    });
+}
+
+// Save charging station positions.
+snapshot["charging_stations"] = json::array();
+
+vector<pair<int, int>> stations = controller.getChargingStations();
+
+for (size_t i = 0; i < stations.size(); i++)
+{
+    snapshot["charging_stations"].push_back({
+        {"x", stations[i].first},
+        {"y", stations[i].second}
+    });
+}
+
+snapshot["robots"] = json::array();
+
+    vector<RobotState> states = controller.getRobotStates();
+
+    for (size_t i = 0; i < states.size(); i++)
+    {
+        snapshot["robots"].push_back({
+    {"id", states[i].id},
+    {"name", states[i].name},
+    {"type", states[i].type},
+    {"x", states[i].x},
+    {"y", states[i].y},
+    {"destX", states[i].destX},
+    {"destY", states[i].destY},
+    {"battery", states[i].battery},
+    {"status", states[i].status},
+    {"priority", states[i].priority}
+});
+    }
+
+    lock_guard<mutex> lock(replayMutex);
+    replaySteps.push_back(snapshot);
+}
+void clearReplaySnapshots()
+{
+    lock_guard<mutex> lock(replayMutex);
+    replaySteps.clear();
 }
     ~UserSimulation()
     {
@@ -79,6 +143,7 @@ void setPlaybackSpeed(int delay)
                 }
 
                 controller.stepSimulation();
+                captureReplaySnapshot();
 
 this_thread::sleep_for(
     chrono::milliseconds(playbackDelay.load())
@@ -126,6 +191,19 @@ static json buildStateResponse(UserSimulation& simulation)
     json response;
 
     response["status"] = simulation.controller.getStatus();
+    // Include charging station positions in the response.
+vector<pair<int, int>> stations =
+    simulation.controller.getChargingStations();
+
+response["charging_stations"] = json::array();
+
+for (size_t i = 0; i < stations.size(); i++)
+{
+    response["charging_stations"].push_back({
+        {"x", stations[i].first},
+        {"y", stations[i].second}
+    });
+}
     response["current_step"] = simulation.controller.getCurrentStep();
     response["finished"] = simulation.controller.isFinished();
     response["error"] = simulation.controller.getErrorMessage();
@@ -175,7 +253,11 @@ for (size_t i = 0; i < paths.size(); i++)
 
         response["robots"].push_back(robot);
     }
-
+        // Include saved simulation snapshots for replay.
+    {
+        lock_guard<mutex> lock(simulation.replayMutex);
+        response["replay_steps"] = simulation.replaySteps;
+    }
     return response;
 }
 
@@ -251,7 +333,32 @@ void registerSimulationRoutes(httplib::Server& server)
                     ));
                 }
             }
+// Read charging station coordinates.
+vector<pair<int, int>> chargingStations;
 
+if (body.contains("chargingStations"))
+{
+    if (!body["chargingStations"].is_array())
+    {
+        throw runtime_error("Charging stations must be an array.");
+    }
+
+    for (size_t i = 0; i < body["chargingStations"].size(); i++)
+    {
+        const json& station = body["chargingStations"][i];
+
+        if (!station.contains("x") ||
+            !station.contains("y"))
+        {
+            throw runtime_error("Invalid charging station data.");
+        }
+
+        chargingStations.push_back(make_pair(
+            station["x"].get<int>(),
+            station["y"].get<int>()
+        ));
+    }
+}
             if (body["robots"].empty() ||
                 body["robots"].size() > 20)
             {
@@ -264,6 +371,7 @@ void registerSimulationRoutes(httplib::Server& server)
 
             // Stop the previous background worker before reconfiguration.
             simulation->stop();
+            simulation->clearReplaySnapshots();
 
             if (!simulation->controller.configureSimulation(
                     rows, cols, obstacles))
@@ -277,7 +385,19 @@ void registerSimulationRoutes(httplib::Server& server)
                 );
                 return;
             }
+            // Register charging stations before adding robots.
+            for (size_t i = 0; i < chargingStations.size(); i++)
+            {
+                int x = chargingStations[i].first;
+                int y = chargingStations[i].second;
 
+                if (!simulation->controller.addChargingStation(x, y))
+                {
+                    throw runtime_error(
+                        simulation->controller.getErrorMessage()
+                    );
+                }
+            }
             for (size_t i = 0; i < body["robots"].size(); i++)
             {
                 const json& item = body["robots"][i];
@@ -375,13 +495,16 @@ else
                     robot->setPriority(priority);
                 }
 
-                if (!simulation->controller.addRobot(move(robot)))
+                                if (!simulation->controller.addRobot(move(robot)))
                 {
                     throw runtime_error(
                         simulation->controller.getErrorMessage()
                     );
                 }
             }
+
+            // Save the initial state before simulation starts.
+            simulation->captureReplaySnapshot();
 
             res.status = 200;
             res.set_content(

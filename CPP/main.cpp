@@ -160,20 +160,23 @@ bool validateRobotRoutes(
         cout << "Battery available: "
              << batteryAvailable << "%" << endl;
 
-        if (batteryAvailable < totalMoves)
-        {
-            cout << "INSUFFICIENT BATTERY! Robot "
-                 << robot->getID()
-                 << " needs at least "
-                 << totalMoves
-                 << "% battery.\n";
+        if (batteryAvailable <= 0)
+{
+    cout << "Robot " << robot->getID()
+         << " has no battery and cannot start.\n";
 
-            allValid = false;
-        }
-        else
-        {
-            cout << "Route and battery checks passed.\n";
-        }
+    allValid = false;
+}
+else
+{
+    cout << "Route validation passed.\n";
+
+    if (batteryAvailable < totalMoves)
+    {
+        cout << "Warning: Battery may not be enough "
+             << "for the complete route. Charging may be required.\n";
+    }
+}
     }
 
     return allValid;
@@ -385,6 +388,28 @@ displayRobotGrid(map, robots);
 
         if (!registrationFailed)
         {
+            // Configure charging stations.
+int stationCount = readBoundedInt(
+    "\nHow many charging stations? (0-20): ", 0, 20);
+
+for (int i = 0; i < stationCount; i++)
+{
+    cout << "\nCharging Station " << i + 1 << endl;
+
+    while (true)
+    {
+        pair<int, int> station = readWalkableCell(
+            map, "Enter charging station position:");
+
+        if (manager.addChargingStation(
+                station.first, station.second))
+        {
+            break;
+        }
+
+        cout << "Invalid station position. Choose another cell.\n";
+    }
+}
             cout << "\n===== SIMULATION CONFIGURATION =====\n";
             cout << "Grid: " << rows << " x " << cols << endl;
             cout << "Obstacles: " << obstacleCount << endl;

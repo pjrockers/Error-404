@@ -78,7 +78,9 @@ string tokenHash = hashSessionToken(token);
                 !data["grid_rows"].is_number_integer() ||
                 !data["grid_cols"].is_number_integer() ||
                 !data["robot_count"].is_number_integer() ||
-                !data["result"].is_string())
+                !data["result"].is_string() ||
+                !data.contains("steps") ||
+                !data["steps"].is_array())
             {
                 res.status = 400;
                 res.set_content(
@@ -89,6 +91,7 @@ string tokenHash = hashSessionToken(token);
 
             string simulationName = data["simulation_name"].get<string>();
             string simulationResult = data["result"].get<string>();
+            string simulationSteps = data["steps"].dump();
             int rows = data["grid_rows"].get<int>();
             int cols = data["grid_cols"].get<int>();
             int robotCount = data["robot_count"].get<int>();
@@ -97,6 +100,7 @@ string tokenHash = hashSessionToken(token);
                 simulationName.length() > 100 ||
                 simulationResult.empty() ||
                 simulationResult.length() > 10000 ||
+                simulationSteps.length() > 5000000 ||
                 rows < 2 || rows > 100 ||
                 cols < 2 || cols > 100 ||
                 robotCount < 1 || robotCount > 20)
@@ -172,9 +176,9 @@ string tokenHash = hashSessionToken(token);
             sqlite3_finalize(statement);
 
             const char* insertSql =
-                "INSERT INTO simulation_history "
-                "(user_id, simulation_name, grid_rows, grid_cols, "
-                "robot_count, result) VALUES (?, ?, ?, ?, ?, ?);";
+    "INSERT INTO simulation_history "
+    "(user_id, simulation_name, grid_rows, grid_cols, "
+    "robot_count, result, steps) VALUES (?, ?, ?, ?, ?, ?, ?);";
 
             
 result = sqlite3_prepare_v2(
@@ -201,10 +205,20 @@ if (result == SQLITE_OK)
         result = sqlite3_bind_int(statement, 5, robotCount);
 
     if (result == SQLITE_OK)
-        result = sqlite3_bind_text(
-            statement, 6, simulationResult.c_str(),
-            -1, SQLITE_TRANSIENT
-        );
+{
+    result = sqlite3_bind_text(
+        statement, 6, simulationResult.c_str(),
+        -1, SQLITE_TRANSIENT
+    );
+}
+
+if (result == SQLITE_OK)
+{
+    result = sqlite3_bind_text(
+        statement, 7, simulationSteps.c_str(),
+        -1, SQLITE_TRANSIENT
+    );
+}
 
     if (result == SQLITE_OK)
         result = sqlite3_step(statement);
@@ -348,7 +362,7 @@ if (result == SQLITE_OK)
            
 const char* historySql =
     "SELECT id, simulation_name, grid_rows, grid_cols, "
-    "robot_count, result, created_at "
+    "robot_count, result, steps, created_at "
     "FROM simulation_history "
     "WHERE user_id = ? ORDER BY id DESC;";
 
@@ -396,8 +410,11 @@ while ((result = sqlite3_step(statement)) == SQLITE_ROW)
     const unsigned char* simulationResult =
         sqlite3_column_text(statement, 5);
 
-    const unsigned char* createdAt =
-        sqlite3_column_text(statement, 6);
+    const unsigned char* stepsText =
+    sqlite3_column_text(statement, 6);
+
+const unsigned char* createdAt =
+    sqlite3_column_text(statement, 7);
 
     history.push_back({
         {"id", sqlite3_column_int64(statement, 0)},
@@ -407,9 +424,12 @@ while ((result = sqlite3_step(statement)) == SQLITE_ROW)
         {"grid_cols", sqlite3_column_int(statement, 3)},
         {"robot_count", sqlite3_column_int(statement, 4)},
         {"result", simulationResult != NULL
-            ? reinterpret_cast<const char*>(simulationResult) : ""},
-        {"created_at", createdAt != NULL
-            ? reinterpret_cast<const char*>(createdAt) : ""}
+    ? reinterpret_cast<const char*>(simulationResult) : ""},
+{"steps", stepsText != NULL
+    ? json::parse(reinterpret_cast<const char*>(stepsText))
+    : json::array()},
+{"created_at", createdAt != NULL
+    ? reinterpret_cast<const char*>(createdAt) : ""}
     });
 }
 

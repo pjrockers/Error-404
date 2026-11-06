@@ -55,7 +55,51 @@ SwarmManager::SwarmManager(GridMap& grid)
       nullStream(nullptr)
 {
 }
+bool SwarmManager::addChargingStation(int x, int y)
+{
+    // Check whether the position is inside the walkable grid.
+    if (!map.isWalkable(x, y))
+    {
+        log() << "Invalid charging station position: ("
+              << x << ", " << y << ")\n";
+        return false;
+    }
 
+    // Prevent duplicate charging stations.
+    for (size_t i = 0; i < chargingStations.size(); i++)
+    {
+        if (chargingStations[i].first == x &&
+            chargingStations[i].second == y)
+        {
+            log() << "A charging station already exists at ("
+                  << x << ", " << y << ")\n";
+            return false;
+        }
+    }
+
+    // Prevent placing a station underneath an existing robot.
+    for (size_t i = 0; i < robots.size(); i++)
+    {
+        if (static_cast<int>(robots[i]->getX()) == x &&
+            static_cast<int>(robots[i]->getY()) == y)
+        {
+            log() << "Cannot place a charging station under a robot.\n";
+            return false;
+        }
+    }
+
+    chargingStations.push_back(make_pair(x, y));
+
+    log() << "Charging station added at ("
+          << x << ", " << y << ")\n";
+
+    return true;
+}
+
+vector<pair<int, int> > SwarmManager::getChargingStations() const
+{
+    return chargingStations;
+}
 ostream& SwarmManager::log() const
 {
     if (verbose)
@@ -150,9 +194,22 @@ for (size_t i = 0; i < destinations.size(); i++)
             return false;
         }
     }
-
+    // Prevent a robot from starting on a charging station.
+for (size_t i = 0; i < chargingStations.size(); i++)
+{
+    if (static_cast<int>(robot->getX()) == chargingStations[i].first &&
+        static_cast<int>(robot->getY()) == chargingStations[i].second)
+    {
+        log() << "Cannot place a robot on a charging station.\n";
+        return false;
+    }
+}
     robots.push_back(robot);
-    waitCounters.push_back(0);
+waitCounters.push_back(0);
+
+// Initially, the robot is not travelling to charge.
+headingToCharge.push_back(false);
+assignedChargingStation.push_back(-1);
 
     // Remember the start state so resetSimulation() can restore it.
     InitialState initial;
@@ -287,6 +344,8 @@ void SwarmManager::resetSimulation()
         robots[i]->resetDestinationProgress();
         robots[i]->setStatus(initialStates[i].status);
         waitCounters[i] = 0;
+        headingToCharge[i] = false;
+        assignedChargingStation[i] = -1;
         robotPaths[i].clear();
 
 robotPaths[i].push_back(make_pair(
@@ -470,6 +529,7 @@ for (Robot* robot : order)
         int y = static_cast<int>(robot->getY());
         int dx = static_cast<int>(robot->getDestX());
         int dy = static_cast<int>(robot->getDestY());
+        
 
         // Check whether the robot has reached its current destination.
 if (x == dx && y == dy)
@@ -491,9 +551,104 @@ if (x == dx && y == dy)
         continue;
     }
 }
+// If battery is low, find the nearest reachable charging station.
+if (!headingToCharge[robotIndex] &&
+    robot->getBattery() <= 20 &&
+    !chargingStations.empty())
+{
+    int nearestIndex = -1;
+    int shortestDistance = 1000000;
 
+    // Calculate how much battery one cell of movement consumes.
+    double batteryPerCell =
+        robot->getSpeed() * BATTERY_CONSUMPTION_RATE;
+
+    // Calculate the maximum number of cells the robot can travel.
+    int maximumReachableCells =
+        static_cast<int>(robot->getBattery() / batteryPerCell);
+
+    for (int s = 0;
+         s < static_cast<int>(chargingStations.size()); s++)
+    {
+        int stationX = chargingStations[s].first;
+        int stationY = chargingStations[s].second;
+
+        // Use BFS to find the actual route to this station.
+        vector<pair<int, int> > stationPath =
+            finder.findPath(map, x, y, stationX, stationY);
+
+        if (stationPath.empty())
+            continue;
+
+        int distance =
+            static_cast<int>(stationPath.size()) - 1;
+
+        // Only consider stations the robot can reach with its battery.
+        if (distance <= maximumReachableCells &&
+            distance < shortestDistance)
+        {
+            shortestDistance = distance;
+            nearestIndex = s;
+        }
+    }
+
+    if (nearestIndex != -1)
+    {
+        headingToCharge[robotIndex] = true;
+        assignedChargingStation[robotIndex] = nearestIndex;
+
+        log() << "Robot " << robot->getID()
+              << " has low battery. Heading to reachable charging station ("
+              << chargingStations[nearestIndex].first << ", "
+              << chargingStations[nearestIndex].second << ").\n";
+    }
+    else
+    {
+        log() << "WARNING: Robot " << robot->getID()
+              << " cannot reach any charging station "
+              << "with its remaining battery.\n";
+    }
+}
+// If travelling to charge, temporarily use the station as the target.
+if (headingToCharge[robotIndex])
+{
+    int stationIndex = assignedChargingStation[robotIndex];
+
+    dx = chargingStations[stationIndex].first;
+    dy = chargingStations[stationIndex].second;
+}
 // This robot is not finished yet.
 allFinished = false;
+// Recharge the robot when it reaches its assigned station.
+if (headingToCharge[robotIndex] &&
+    x == dx && y == dy)
+{
+    double newBattery = robot->getBattery() + 10.0;
+
+    if (newBattery > 100.0)
+        newBattery = 100.0;
+
+    robot->setBattery(newBattery);
+    robot->setStatus("Charging");
+
+    log() << "Robot " << robot->getID()
+          << " is charging. Battery: "
+          << robot->getBattery() << "%\n";
+
+    // Resume the original destination once fully charged.
+    if (newBattery >= 100.0)
+    {
+        headingToCharge[robotIndex] = false;
+        assignedChargingStation[robotIndex] = -1;
+
+        robot->setStatus("Moving");
+
+        log() << "Robot " << robot->getID()
+              << " is fully charged. Resuming its journey.\n";
+    }
+
+    continue;
+}
 
         if (!robot->hasBattery())
         {
@@ -659,7 +814,15 @@ robot->consumeBattery(batteryUsed);
 
     if (nextX == dx && nextY == dy)
 {
-    if (robot->hasMoreDestinations())
+    // Reaching a charging station must not advance the waypoint queue.
+    if (headingToCharge[robotIndex])
+    {
+        robot->setStatus("Charging");
+
+        log() << "Robot " << robot->getID()
+              << " reached its charging station.\n";
+    }
+    else if (robot->hasMoreDestinations())
     {
         robot->moveToNextDestination();
 
@@ -677,7 +840,6 @@ robot->consumeBattery(batteryUsed);
 
     break;
 }
-
     if (!robot->hasBattery())
     {
         robot->setStatus("Low Battery");
@@ -709,6 +871,7 @@ if (!robotMoved)
     log() << "\n";
 }
 else if (robot->getStatus() != "Arrived" &&
+         robot->getStatus() != "Charging" &&
          robot->hasBattery())
 {
     robot->setStatus("Moving");
@@ -746,11 +909,13 @@ else if (robot->getStatus() != "Arrived" &&
             static_cast<int>(robot->getY()) ==
                 static_cast<int>(robot->getDestY());
 
-        if (!arrived && robot->hasBattery())
-        {
-            unfinishedRobotHasBattery = true;
-            break;
-        }
+        // A robot travelling to a charging station may still need to move,
+// even if its battery is currently very low.
+if (!arrived && robot->hasBattery())
+{
+    unfinishedRobotHasBattery = true;
+    break;
+}
     }
 
     if (!unfinishedRobotHasBattery)

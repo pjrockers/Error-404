@@ -87,12 +87,27 @@
 .obstacle-cell { background: #3c2631; border-color: #764052; }
 .robot-marker { width: 70%; height: 70%; display: grid; place-items: center; border-radius: 4px; background: #8b72ff; color: white; font-size: clamp(8px, 1.2vw, 13px); font-weight: 700; }
 .obstacle-marker { color: #ff8d9e; font-size: 17px; }
+/* Charging Station */
+.charging-station-cell {
+  background: #123b43;
+  border-color: #20b8c5;
+}
+
+.charging-station-marker {
+  color: #facc15;
+  font-size: clamp(10px, 1.4vw, 16px);
+  font-weight: 700;
+  text-shadow: 0 0 8px #facc1580;
+}
 .legend { display: flex; flex-wrap: wrap; gap: 17px; margin-top: 14px; color: #929eb3; font-size: 10px; }
 .legend span { display: flex; align-items: center; gap: 6px; }
 .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; }
 .legend-robot { background: #8b72ff; }
 .legend-obstacle { background: #b85c74; }
 .legend-empty { background: #253047; }
+.legend-charging {
+  background: #20b8c5;
+}
 .robot-list { display: flex; flex-direction: column; }
 .robot-row { display: flex; align-items: center; gap: 10px; padding: 14px 0; border-bottom: 1px solid #232c3c; }
 .robot-row:last-child { border-bottom: 0; }
@@ -692,4 +707,46 @@
 
 .show-attributes-button:hover {
   color: #b5a7ff;
+}
+
+/* History destination markers */
+.history-mini-cell.history-destination-cell {
+  background: #854d0e;
+  border: 1px solid #fbbf24;
+  color: #fef3c7;
+  font-weight: 800;
+}
+.history-mini-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 12px;
+  color: #94a3b8;
+  font-size: 10px;
+}
+
+.history-mini-legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.history-mini-legend i {
+  width: 9px;
+  height: 9px;
+  display: inline-block;
+  border-radius: 2px;
+}
+
+.legend-history-robot {
+  background: #2563eb;
+}
+
+.legend-history-destination {
+  background: #854d0e;
+  border: 1px solid #fbbf24;
+}
+
+.legend-history-trail {
+  background: #0e7490;
 }

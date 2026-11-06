@@ -38,8 +38,15 @@ private:
     GridMap& map;
     vector<Robot*> robots;
     vector<int> waitCounters;
+    // Tracks whether each robot is travelling to a charging station.
+vector<bool> headingToCharge;
+
+// Stores the assigned charging station index for each robot.
+vector<int> assignedChargingStation;
+    vector<pair<int, int> > chargingStations;
     vector<InitialState> initialStates;
     vector<vector<pair<int, int>>> robotPaths;
+
 
     // Persistent simulation state (these used to be local variables).
     int currentStep;
@@ -62,6 +69,8 @@ public:
     SwarmManager(GridMap& grid);
 
     bool addRobot(Robot* robot);
+    bool addChargingStation(int x, int y);
+vector<pair<int, int> > getChargingStations() const;
     void displayRobots() const;
     int getRobotCount() const;
     vector<RobotState> getRobotStates() const;

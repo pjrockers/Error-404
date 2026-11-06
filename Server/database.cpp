@@ -131,6 +131,7 @@ bool initializeDatabase()
         "grid_cols INTEGER NOT NULL,"
         "robot_count INTEGER NOT NULL,"
         "result TEXT,"
+        "steps TEXT NOT NULL DEFAULT '[]',"
         "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
         "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
         ");"
@@ -159,7 +160,65 @@ bool initializeDatabase()
         sqlite3_close(db);
         return false;
     }
+    // Check whether the steps column already exists
+bool stepsColumnExists = false;
 
+sqlite3_stmt* checkStatement = NULL;
+
+result = sqlite3_prepare_v2(
+    db,
+    "PRAGMA table_info(simulation_history);",
+    -1,
+    &checkStatement,
+    NULL
+);
+
+if (result == SQLITE_OK)
+{
+    while (sqlite3_step(checkStatement) == SQLITE_ROW)
+    {
+        const unsigned char* columnName =
+            sqlite3_column_text(checkStatement, 1);
+
+        if (columnName != NULL &&
+            string(reinterpret_cast<const char*>(columnName)) == "steps")
+        {
+            stepsColumnExists = true;
+            break;
+        }
+    }
+}
+
+sqlite3_finalize(checkStatement);
+
+// Add the column only if it does not exist
+if (!stepsColumnExists)
+{
+    result = sqlite3_exec(
+        db,
+        "ALTER TABLE simulation_history "
+        "ADD COLUMN steps TEXT NOT NULL DEFAULT '[]';",
+        NULL,
+        NULL,
+        &errorMessage
+    );
+
+    if (result != SQLITE_OK)
+    {
+        cerr << "Failed to add simulation history steps column: "
+             << (errorMessage != NULL
+                     ? errorMessage
+                     : sqlite3_errmsg(db))
+             << endl;
+
+        sqlite3_free(errorMessage);
+        sqlite3_close(db);
+        return false;
+    }
+
+    sqlite3_free(errorMessage);
+    errorMessage = NULL;
+}
     sqlite3_free(errorMessage);
     sqlite3_close(db);
 

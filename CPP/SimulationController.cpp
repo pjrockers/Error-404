@@ -106,6 +106,33 @@ bool SimulationController::addRobot(unique_ptr<Robot> robot)
     return true;
 }
 
+// Register a charging station.
+bool SimulationController::addChargingStation(int x, int y)
+{
+    lock_guard<mutex> lock(simulationMutex);
+
+    if (!grid || !swarm)
+    {
+        errorMessage = "Configure the simulation first.";
+        return false;
+    }
+
+    if (started)
+    {
+        errorMessage = "Cannot add charging stations after simulation starts.";
+        return false;
+    }
+
+    if (!swarm->addChargingStation(x, y))
+    {
+        errorMessage = "Charging station registration failed.";
+        return false;
+    }
+
+    errorMessage.clear();
+
+    return true;
+}
 // Start the simulation.
 bool SimulationController::startSimulation()
 {
@@ -279,6 +306,63 @@ vector<vector<pair<int, int>>> SimulationController::getRobotPaths() const
     return swarm->getRobotPaths();
 }
 // Return the current simulation status.
+// Return a safe copy of all charging station positions.
+vector<pair<int, int>> SimulationController::getChargingStations() const
+{
+    lock_guard<mutex> lock(simulationMutex);
+
+    if (!swarm)
+    {
+        return vector<pair<int, int>>();
+    }
+
+    return swarm->getChargingStations();
+}
+// Return the grid row count.
+int SimulationController::getGridRows() const
+{
+    lock_guard<mutex> lock(simulationMutex);
+
+    if (!grid)
+        return 0;
+
+    return grid->getRows();
+}
+
+// Return the grid column count.
+int SimulationController::getGridCols() const
+{
+    lock_guard<mutex> lock(simulationMutex);
+
+    if (!grid)
+        return 0;
+
+    return grid->getCols();
+}
+
+// Return all obstacle coordinates.
+vector<pair<int, int>> SimulationController::getObstacles() const
+{
+    lock_guard<mutex> lock(simulationMutex);
+
+    vector<pair<int, int>> obstacles;
+
+    if (!grid)
+        return obstacles;
+
+    for (int y = 0; y < grid->getRows(); y++)
+    {
+        for (int x = 0; x < grid->getCols(); x++)
+        {
+            if (grid->isObstacle(x, y))
+            {
+                obstacles.push_back(make_pair(x, y));
+            }
+        }
+    }
+
+    return obstacles;
+}
 string SimulationController::getStatus() const
 {
     lock_guard<mutex> lock(simulationMutex);

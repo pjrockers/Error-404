@@ -434,8 +434,9 @@ function handleEditRobot(robot) {
   const [savingRobotEdit, setSavingRobotEdit] = useState(false);
   const [editCustomAttributes, setEditCustomAttributes] = useState([]);
   const [selectedRobotId, setSelectedRobotId] = useState(null);
-  const [obstacles, setObstacles] = useState([]);
-  const [selectedTool, setSelectedTool] = useState("obstacle");
+const [obstacles, setObstacles] = useState([]);
+const [chargingStations, setChargingStations] = useState([]);
+const [selectedTool, setSelectedTool] = useState("obstacle");
   const [running, setRunning] = useState(false);
   // Real backend simulation state
 const [simulationStep, setSimulationStep] = useState(0);
@@ -498,12 +499,33 @@ const result = [
     const pathText = path
       .map((cell) => `(${cell.x}, ${cell.y})`)
       .join(" -> ");
+      const configuredRobot = robots.find(
+  (item) => Number(item.id) === Number(robot.id)
+);
+
+const destinations = (
+  robotDestinations[robot.id] || []
+).filter(
+  (destination) =>
+    destination.x !== "" && destination.y !== ""
+);
+
+const destinationText = destinations.length
+  ? destinations
+      .map(
+        (destination, i) =>
+          `  Destination ${i + 1}: (${destination.x}, ${destination.y})`
+      )
+      .join("\n")
+  : "  No destination details recorded";
 
     return [
       `${robot.name}:`,
-      `  Starting position: ${startPosition}`,
-      `  Final position: ${finalPosition}`,
-      `  Movement path: ${pathText || "Not recorded"}`,
+`  Starting position: ${startPosition}`,
+`  Final position: ${finalPosition}`,
+`  Destinations:`,
+destinationText,
+`  Movement path: ${pathText || "Not recorded"}`,
       `  Status: ${robot.status}`,
       `  Battery: ${robot.battery}%`,
     ].join("\n");
@@ -511,13 +533,16 @@ const result = [
 ].join("\n");
 
         try {
-          await saveSimulationHistory(token, {
-            simulation_name: `Simulation ${new Date().toLocaleString()}`,
-            grid_rows: Number(rows),
-            grid_cols: Number(cols),
-            robot_count: robots.length,
-            result: result,
-          });
+         await saveSimulationHistory(token, {
+  simulation_name: `Simulation ${new Date().toLocaleString()}`,
+  grid_rows: Number(rows),
+  grid_cols: Number(cols),
+  robot_count: robots.length,
+  result: result,
+  steps: Array.isArray(data.replay_steps)
+    ? data.replay_steps
+    : [],
+});
 
           // Refresh history after successfully saving.
           const historyData = await getSimulationHistory(token);
@@ -564,25 +589,55 @@ useEffect(() => {
 }, [token, user, activePage]);
 
 async function handleCellClick(x, y) {
-  if (selectedTool === "obstacle") {
-    const occupied = robots.some(
-      (robot) => robot.x === x && robot.y === y
+  // Add or remove charging stations.
+if (selectedTool === "charging") {
+  const occupied = robots.some(
+    (robot) => robot.x === x && robot.y === y
+  );
+
+  const blocked = obstacles.some(
+    (cell) => cell.x === x && cell.y === y
+  );
+
+  if (occupied || blocked) return;
+
+  setChargingStations((current) => {
+    const exists = current.some(
+      (station) => station.x === x && station.y === y
     );
 
-    if (occupied) return;
+    return exists
+      ? current.filter(
+          (station) => station.x !== x || station.y !== y
+        )
+      : [...current, { x, y }];
+  });
 
-    setObstacles((current) => {
-      const exists = current.some(
-        (cell) => cell.x === x && cell.y === y
-      );
+  return;
+}
+  if (selectedTool === "obstacle") {
+  const occupied = robots.some(
+    (robot) => robot.x === x && robot.y === y
+  );
 
-      return exists
-        ? current.filter((cell) => cell.x !== x || cell.y !== y)
-        : [...current, { x, y }];
-    });
+  const hasChargingStation = chargingStations.some(
+    (station) => station.x === x && station.y === y
+  );
 
-    return;
-  }
+  if (occupied || hasChargingStation) return;
+
+  setObstacles((current) => {
+    const exists = current.some(
+      (cell) => cell.x === x && cell.y === y
+    );
+
+    return exists
+      ? current.filter((cell) => cell.x !== x || cell.y !== y)
+      : [...current, { x, y }];
+  });
+
+  return;
+}
 
   const robot = robots.find(
     (item) => item.id === selectedTool
@@ -591,17 +646,21 @@ async function handleCellClick(x, y) {
   if (!robot) return;
 
   const occupied = robots.some(
-    (item) =>
-      item.id !== robot.id &&
-      item.x === x &&
-      item.y === y
-  );
+  (item) =>
+    item.id !== robot.id &&
+    item.x === x &&
+    item.y === y
+);
 
-  const blocked = obstacles.some(
-    (cell) => cell.x === x && cell.y === y
-  );
+const blocked = obstacles.some(
+  (cell) => cell.x === x && cell.y === y
+);
 
-  if (occupied || blocked) return;
+const hasChargingStation = chargingStations.some(
+  (station) => station.x === x && station.y === y
+);
+
+if (occupied || blocked || hasChargingStation) return;
 
   // Don't save if the robot is already in this cell.
   if (robot.x === x && robot.y === y) return;
@@ -643,9 +702,17 @@ function applySimulationState(data) {
     setSimulationRobots(data.robots);
   }
 
+  if (Array.isArray(data.charging_stations)) {
+    setChargingStations(
+      data.charging_stations.map((station) => ({
+        x: Number(station.x),
+        y: Number(station.y),
+      }))
+    );
+  }
+
   setRunning(data.status === "running");
 }
-
 async function handleConfigureSimulation() {
   if (!token) return;
 
@@ -736,6 +803,10 @@ const configuredRobots = robots.map((robot) => {
         x: Number(cell.x),
         y: Number(cell.y),
       })),
+      chargingStations: chargingStations.map((station) => ({
+    x: Number(station.x),
+    y: Number(station.y),
+  })),
       robots: configuredRobots,
     });
 
@@ -899,6 +970,16 @@ async function createRobotFromTemplate(event) {
     setRobotCreationError("Another robot already occupies that cell.");
     return;
   }
+  if (
+  chargingStations.some(
+    (station) => station.x === x && station.y === y
+  )
+) {
+  setRobotCreationError(
+    "A robot cannot start on a charging station."
+  );
+  return;
+}
 
   const robotToCreate = {
     name: newRobotName.trim() || `Robot ${Date.now()}`,
@@ -957,8 +1038,13 @@ async function addRobot() {
         (obstacle) =>
           Number(obstacle.x) === x && Number(obstacle.y) === y
       );
+      const hasChargingStation = chargingStations.some(
+  (station) =>
+    Number(station.x) === x &&
+    Number(station.y) === y
+);
 
-      if (!occupied && !blocked) {
+      if (!occupied && !blocked && !hasChargingStation) {
         freeCell = { x, y };
         break;
       }
@@ -1112,6 +1198,7 @@ async function addRobot() {
                   cols={cols}
                   robots={robots}
                   obstacles={obstacles}
+                  chargingStations={chargingStations}
                   onCellClick={handleCellClick}
                   interactive={false}
                   selectedRobotId={selectedRobotId}
@@ -1120,6 +1207,7 @@ async function addRobot() {
                 <div className="legend">
                   <span><i className="legend-robot" /> Robot</span>
                   <span><i className="legend-obstacle" /> Obstacle</span>
+                  <span><i className="legend-charging" /> Charging station</span>
                   <span><i className="legend-empty" /> Free cell</span>
                 </div>
               </div>
@@ -1268,14 +1356,27 @@ async function addRobot() {
                   onChange={(e) => setCols(Math.max(2, Math.min(20, Number(e.target.value) || 2)))} />
               </label>
               <label>Editing tool
-                <select value={selectedTool} onChange={(e) =>
-                  setSelectedTool(e.target.value === "obstacle" ? "obstacle" : Number(e.target.value))
-                }>
-                  <option value="obstacle">Place obstacles</option>
-                  {robots.map((robot) => (
-                    <option key={robot.id} value={robot.id}>Move {robot.name}</option>
-                  ))}
-                </select>
+                <select
+  value={selectedTool}
+  onChange={(e) => {
+    const value = e.target.value;
+
+    setSelectedTool(
+      value === "obstacle" || value === "charging"
+        ? value
+        : Number(value)
+    );
+  }}
+>
+  <option value="obstacle">Place obstacles</option>
+  <option value="charging">Place charging stations</option>
+
+  {robots.map((robot) => (
+    <option key={robot.id} value={robot.id}>
+      Move {robot.name}
+    </option>
+  ))}
+</select>
               </label>
               <label>
   Playback speed
@@ -1397,6 +1498,7 @@ async function addRobot() {
               cols={cols}
               robots={simulationRobots.length > 0 ? simulationRobots : robots}
               obstacles={obstacles}
+              chargingStations={chargingStations}
               onCellClick={handleCellClick}
               interactive
             />
@@ -1408,6 +1510,7 @@ async function addRobot() {
               <div className="legend">
                 <span><i className="legend-robot" /> Robot</span>
                 <span><i className="legend-obstacle" /> Obstacle</span>
+                <span><i className="legend-charging" /> Charging station</span>
                 <span><i className="legend-empty" /> Free cell</span>
               </div>
               <div className="action-row">
@@ -1560,7 +1663,18 @@ if (blocked) {
   setRobotsError("A robot cannot be placed on an obstacle.");
   return;
 }
+const onChargingStation = chargingStations.some(
+  (station) =>
+    station.x === updatedRobot.x &&
+    station.y === updatedRobot.y
+);
 
+if (onChargingStation) {
+  setRobotsError(
+    "A robot cannot be placed on a charging station."
+  );
+  return;
+}
 if (
   !Number.isFinite(updatedRobot.battery) ||
   updatedRobot.battery < 0 ||
@@ -2189,6 +2303,7 @@ updatedRobot.priority = priority;
     </div>
   </div>
 </div>
+<ReplayViewer item={item} />
 
 <div style={{ marginTop: 16 }}>
   <strong>Simulation result</strong>
@@ -2213,6 +2328,253 @@ updatedRobot.priority = priority;
   );
 }
 
+function ReplayViewer({ item }) {
+  const steps = Array.isArray(item.steps) ? item.steps : [];
+  const [selectedStep, setSelectedStep] = useState(0);
+
+  if (steps.length === 0) {
+    return (
+      <div style={{ marginTop: 16 }}>
+        <h4>Simulation Replay</h4>
+        <p>No replay data is available for this simulation.</p>
+      </div>
+    );
+  }
+
+  const currentSnapshot =
+    steps[Math.min(selectedStep, steps.length - 1)];
+
+  const replayRobots = currentSnapshot.robots || [];
+
+const rows = Number(
+  currentSnapshot.grid_rows || item.grid_rows
+);
+
+const cols = Number(
+  currentSnapshot.grid_cols || item.grid_cols
+);
+
+const obstacles = currentSnapshot.obstacles || [];
+const chargingStations = currentSnapshot.charging_stations || [];
+
+  return (
+    <div style={{
+      marginTop: 20,
+      padding: 18,
+      background: "#101622",
+      border: "1px solid #222c3e",
+      borderRadius: 12,
+      color: "#e8edf7"
+    }}>
+      <h4 style={{ color: "#e2e8f0" }}>Simulation Replay</h4>
+
+      <p style={{ color: "#94a3b8", fontSize: 12 }}>
+        Step {currentSnapshot.step} of {steps[steps.length - 1].step}
+      </p>
+
+      <div style={{
+        width: "100%",
+        overflowX: "auto",
+        padding: 10,
+        background: "#0b111c",
+        border: "1px solid #263247",
+        borderRadius: 9
+      }}>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+gridAutoRows: "minmax(48px, auto)",
+gap: 3,
+minWidth: Math.max(320, cols * 40),
+maxWidth: 650
+        }}>
+          {Array.from({ length: rows * cols }, (_, index) => {
+            const x = index % cols;
+            const y = Math.floor(index / cols);
+
+            const robot = replayRobots.find(
+              r => Number(r.x) === x && Number(r.y) === y
+            );
+            const obstacle = obstacles.some(
+  cell => Number(cell.x) === x && Number(cell.y) === y
+);
+
+const chargingStation = chargingStations.some(
+  cell => Number(cell.x) === x && Number(cell.y) === y
+);
+
+const destination = replayRobots.some(robot =>
+  Number(robot.destX) === x &&
+  Number(robot.destY) === y
+);
+
+            return (
+              <div
+                key={`${x}-${y}`}
+                title={
+  robot
+    ? `${robot.name} | ${robot.status} | Position: (${x}, ${y}) | Destination: (${robot.destX}, ${robot.destY})`
+    : obstacle
+      ? `Obstacle | (${x}, ${y})`
+      : chargingStation
+        ? `Charging Station | (${x}, ${y})`
+        : destination
+          ? `Robot Destination | (${x}, ${y})`
+          : `Empty Cell | (${x}, ${y})`
+}
+                style={{
+                  minWidth: 0,
+minHeight: 48,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: 2,
+                  boxSizing: "border-box",
+                  background: robot
+  ? "#292345"
+  : obstacle
+    ? "#3c2631"
+    : chargingStation
+      ? "#174b43"
+      : destination
+        ? "#493c20"
+        : "#121b2a",
+
+border: robot
+  ? "1px solid #8b72ff"
+  : obstacle
+    ? "1px solid #764052"
+    : chargingStation
+      ? "1px solid #2b9b80"
+      : destination
+        ? "1px solid #c49b42"
+        : "1px solid #253047",
+                  borderRadius: 3,
+                  color: "white",
+                  fontSize: "clamp(7px, 1vw, 11px)",
+                  fontWeight: 700,
+                  overflow: "hidden",
+                  textAlign: "center"
+                }}
+              >
+                {robot ? (
+  <span style={{
+    display: "block",
+    width: "100%",
+    whiteSpace: "normal",
+    overflowWrap: "anywhere",
+    lineHeight: 1.2,
+    background: "#8b72ff",
+    borderRadius: 3,
+    padding: "3px 2px",
+    boxSizing: "border-box",
+    fontSize: "clamp(7px, 0.8vw, 10px)",
+    textAlign: "center"
+  }}>
+    {robot.name}
+  </span>
+) : obstacle ? (
+  "##"
+) : chargingStation ? (
+  "C"
+) : destination ? (
+  "D"
+) : ""}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="legend" style={{
+  marginTop: 12,
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 14
+}}>
+  <span>
+    <i style={{ background: "#8b72ff" }} /> Robot
+  </span>
+  <span>
+    <i style={{ background: "#3c2631" }} /> Obstacle
+  </span>
+  <span>
+    <i style={{ background: "#174b43" }} /> Charging Station
+  </span>
+  <span>
+    <i style={{ background: "#493c20" }} /> Destination
+  </span>
+  <span>
+    <i style={{ background: "#121b2a" }} /> Empty Cell
+  </span>
+</div>
+
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        marginTop: 16
+      }}>
+        <button
+          className="secondary-button"
+          disabled={selectedStep === 0}
+          onClick={() => setSelectedStep(s => s - 1)}
+        >
+          Previous
+        </button>
+
+        <input
+          type="range"
+          min="0"
+          max={steps.length - 1}
+          value={selectedStep}
+          onChange={e => setSelectedStep(Number(e.target.value))}
+          style={{ flex: 1 }}
+        />
+
+        <button
+          className="secondary-button"
+          disabled={selectedStep === steps.length - 1}
+          onClick={() => setSelectedStep(s => s + 1)}
+        >
+          Next
+        </button>
+      </div>
+
+      <div style={{ marginTop: 18 }}>
+        <h5 style={{ color: "#cbd5e1" }}>Robot states</h5>
+
+        {replayRobots.map(robot => (
+          <div
+            key={robot.id}
+            style={{
+              padding: 12,
+              marginBottom: 8,
+              background: "#151c2a",
+              border: "1px solid #303a4e",
+              borderRadius: 8
+            }}
+          >
+            <strong style={{ color: "#c6b9ff" }}>
+              {robot.name}
+            </strong>
+            <p style={{
+              margin: "6px 0 0",
+              color: "#a5b2c5",
+              fontSize: 12
+            }}>
+              Position: ({robot.x}, {robot.y})
+              {" | "}Battery: {robot.battery}%
+              {" | "}Status: {robot.status}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
 function StatCard({ label, value, detail, icon }) {
   return (
     <div className="stat-card">
@@ -2223,19 +2585,20 @@ function StatCard({ label, value, detail, icon }) {
   );
 }
 
+
 function HistoryMiniGrid({ rows, cols, result, positionType }) {
   const robotPositions = [];
   const robotPaths = [];
+  const robotDestinations = [];
 
   const matches = [
     ...result.matchAll(
-      /([^\n]+):\n\s+Starting position: \((\d+), (\d+)\)\n\s+Final position: \((\d+), (\d+)\)\n\s+Movement path: ([^\n]*)/g
+      /^([^\n]+):\n\s+Starting position: \((\d+), (\d+)\)\n\s+Final position: \((\d+), (\d+)\)[\s\S]*?^\s+Movement path: ([^\n]*)/gm
     ),
   ];
 
   matches.forEach((match, index) => {
-    const path = match[6]
-      .match(/\((\d+), (\d+)\)/g) || [];
+    const path = match[6].match(/\((\d+), (\d+)\)/g) || [];
 
     const cells = path.map((cell) => {
       const coordinates = cell.match(/\((\d+), (\d+)\)/);
@@ -2257,6 +2620,21 @@ function HistoryMiniGrid({ rows, cols, result, positionType }) {
       x: Number(positionType === "start" ? match[2] : match[4]),
       y: Number(positionType === "start" ? match[3] : match[5]),
     });
+
+    const destinations = [
+      ...match[0].matchAll(
+        /Destination \d+: \((\d+), (\d+)\)/g
+      ),
+    ];
+
+    destinations.forEach((destination, destinationIndex) => {
+      robotDestinations.push({
+        name: match[1].trim(),
+        number: destinationIndex + 1,
+        x: Number(destination[1]),
+        y: Number(destination[2]),
+      });
+    });
   });
 
   return (
@@ -2275,6 +2653,10 @@ function HistoryMiniGrid({ rows, cols, result, positionType }) {
             (item) => item.x === x && item.y === y
           );
 
+          const destination = robotDestinations.find(
+            (item) => item.x === x && item.y === y
+          );
+
           const trail = robotPaths.find((item) =>
             item.cells.some((cell) => cell.x === x && cell.y === y)
           );
@@ -2284,20 +2666,33 @@ function HistoryMiniGrid({ rows, cols, result, positionType }) {
               key={`${x}-${y}`}
               className={`history-mini-cell ${
                 trail ? `trail-${trail.index % 6}` : ""
-              } ${robot ? "occupied" : ""}`}
+              } ${robot ? "occupied" : ""} ${
+                destination ? "history-destination-cell" : ""
+              }`}
               title={
                 robot
                   ? `${robot.name} (${x}, ${y})`
-                  : trail
-                    ? `${trail.name}'s path (${x}, ${y})`
-                    : `(${x}, ${y})`
+                  : destination
+                    ? `${destination.name} - Destination ${destination.number} (${x}, ${y})`
+                    : trail
+                      ? `${trail.name}'s path (${x}, ${y})`
+                      : `(${x}, ${y})`
               }
             >
-              {robot ? robot.name.slice(0, 1).toUpperCase() : ""}
+              {robot
+                ? robot.name.slice(0, 1).toUpperCase()
+                : destination
+                  ? "D"
+                  : ""}
             </div>
           );
         })}
       </div>
+      <div className="history-mini-legend">
+  <span><i className="legend-history-robot"></i> Robot</span>
+  <span><i className="legend-history-destination"></i> Destination</span>
+  <span><i className="legend-history-trail"></i> Movement path</span>
+</div>
     </div>
   );
 }
@@ -2307,6 +2702,7 @@ function GridPreview({
   cols,
   robots,
   obstacles,
+  chargingStations,
   onCellClick,
   interactive,
   selectedRobotId,
@@ -2314,6 +2710,10 @@ function GridPreview({
 }) {
   const robotAt = (x, y) => robots.find((robot) => robot.x === x && robot.y === y);
   const obstacleAt = (x, y) => obstacles.some((cell) => cell.x === x && cell.y === y);
+  const stationAt = (x, y) =>
+  chargingStations.some(
+    (station) => station.x === x && station.y === y
+  );
 
   return (
     <div className={`grid-viewport ${interactive ? "interactive-grid" : ""}`}>
@@ -2335,7 +2735,9 @@ function GridPreview({
     ? `robot-cell ${robot.id === selectedRobotId ? "selected-robot-cell" : ""}`
     : obstacle
       ? "obstacle-cell"
-      : ""
+      : stationAt(x, y)
+        ? "charging-station-cell"
+        : ""
 }`}
               onClick={() => {
   if (robot && onRobotSelect) {
@@ -2344,10 +2746,22 @@ function GridPreview({
     onCellClick(x, y);
   }
 }}
-              title={`Row ${y}, column ${x}`}
+             title={robot
+    ? `${robot.name} | ${robot.status} | (${x}, ${y})`
+    : obstacle
+      ? `Obstacle | (${x}, ${y})`
+      : `(${x}, ${y})`
+}
               disabled={interactive ? false : !robot}            >
-              {robot ? <span className="robot-marker">{robot.name.slice(0, 1)}</span>
-                : obstacle ? <span className="obstacle-marker">×</span> : null}
+              {robot ? (
+  <span className="robot-marker">
+    {robot.name.slice(0, 1)}
+  </span>
+) : obstacle ? (
+  <span className="obstacle-marker">×</span>
+) : stationAt(x, y) ? (
+  <span className="charging-station-marker">⚡</span>
+) : null}
             </button>
           );
         })}

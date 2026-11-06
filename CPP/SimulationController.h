@@ -43,6 +43,8 @@ public:
 
     // Add a robot to the simulation.
     bool addRobot(std::unique_ptr<Robot> robot);
+    // Add a charging station to the simulation.
+bool addChargingStation(int x, int y);
 
     // Simulation controls.
     bool startSimulation();
@@ -56,6 +58,12 @@ public:
 std::vector<RobotState> getRobotStates() const;
 
 std::vector<std::vector<std::pair<int, int>>> getRobotPaths() const;
+std::vector<std::pair<int, int>> getChargingStations() const;
+
+// Grid information for simulation replay.
+int getGridRows() const;
+int getGridCols() const;
+std::vector<std::pair<int, int>> getObstacles() const;
     std::string getStatus() const;
     std::string getErrorMessage() const;
     int getCurrentStep() const;

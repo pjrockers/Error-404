@@ -1,165 +1,398 @@
+css/* ==========================================
+   MAIN APPLICATION LAYOUT
+   ========================================== */
 
+/* Main container that holds the sidebar and page content. */
 .app-shell {
-  min-height: 100vh;
-  display: flex;
+  min-height: 100vh; /* Makes the application at least the full screen height. */
+  display: flex; /* Places sidebar and main content side by side. */
   background: #0a0e17;
 }
 
+/* ==========================================
+   SIDEBAR AND NAVIGATION
+   ========================================== */
+
+/* Left navigation panel of the application. */
 .sidebar {
   width: 245px;
-  flex-shrink: 0;
+  flex-shrink: 0; /* Prevents sidebar from shrinking. */
   display: flex;
-  flex-direction: column;
+  flex-direction: column; /* Arranges sidebar items vertically. */
   padding: 27px 17px 18px;
   border-right: 1px solid #202838;
   background: #0d121d;
 }
 
+/* Application logo and brand name. */
 .brand { display: flex; align-items: center; gap: 11px; padding: 0 7px 38px; }
+
+/* Purple square containing the application logo letter. */
 .brand-icon {
   width: 40px; height: 40px; display: grid; place-items: center;
   border-radius: 12px; background: #7c5cff; color: white;
   font: 700 22px 'Space Grotesk', sans-serif;
 }
+
+/* Application name in the sidebar. */
 .brand h2 { margin: 0; font: 600 16px 'Space Grotesk', sans-serif; }
+
+/* Small subtitle below the application name. */
 .brand p { margin: 4px 0 0; font-size: 9px; letter-spacing: 2px; color: #818ba1; }
+
+/* Heading above the navigation buttons. */
 .nav-heading { margin: 0 10px 12px; color: #69758d; font-size: 10px; letter-spacing: 1.6px; font-weight: 700; }
+
+/* Individual sidebar navigation buttons. */
 .nav-item {
   width: 100%; display: flex; align-items: center; gap: 12px;
   border: 0; border-radius: 9px; padding: 12px 13px; margin: 3px 0;
   background: transparent; color: #9da8bc; text-align: left; font-size: 13px;
 }
+
+/* Icons displayed inside navigation buttons. */
 .nav-item span { width: 20px; font-size: 18px; text-align: center; }
+
+/* Changes button appearance when hovered or selected. */
 .nav-item:hover, .nav-item.active { background: #211e3d; color: #c9bdff; }
+
+/* Adds a purple indicator to the currently active navigation page. */
 .nav-item.active { box-shadow: inset 3px 0 #8b72ff; }
+
+/* Bottom section of the sidebar showing connection information. */
 .sidebar-bottom {
   margin-top: auto; border-top: 1px solid #202838; padding: 20px 6px 0;
   display: flex; align-items: center; gap: 10px; font-size: 11px;
 }
+
+/* Connection information heading. */
 .sidebar-bottom strong { font-size: 12px; font-weight: 500; }
+
+/* Secondary connection information text. */
 .sidebar-bottom p { margin: 4px 0 0; color: #7d899f; }
+
+/* Small green circle indicating connection status. */
 .connection-dot { width: 8px; height: 8px; border-radius: 50%; background: #40d6a0; box-shadow: 0 0 10px #40d6a066; }
 
+
+/* ==========================================
+   MAIN CONTENT AND TOP HEADER
+   ========================================== */
+
+/* Main page area displayed beside the sidebar. */
 .main-content { flex: 1; min-width: 0; padding: 0 34px 40px; }
+
+/* Top header containing page title and user information. */
 .topbar {
   min-height: 103px; display: flex; justify-content: space-between; align-items: center;
   border-bottom: 1px solid #202838; gap: 20px;
 }
+
+/* Small descriptive text above the page title. */
 .eyebrow { margin: 0 0 8px; color: #7d89a2; font-size: 9px; letter-spacing: 1.5px; }
+
+/* Main page heading. */
 .topbar h1 { margin: 0; font: 600 24px 'Space Grotesk', sans-serif; }
+
+/* Container for username, avatar and logout button. */
 .topbar-right { display: flex; align-items: center; gap: 15px; }
+
+/* Small label displaying the logged-in username. */
 .demo-label { border: 1px solid #494066; border-radius: 6px; padding: 7px 9px; color: #b7a6ff; font-size: 9px; letter-spacing: 1px; }
+
+/* Circular user avatar. */
 .avatar { width: 35px; height: 35px; display: grid; place-items: center; border-radius: 50%; background: #292541; color: #c8bbff; font-weight: 700; }
+
+/* Welcome message and simulator navigation button. */
 .welcome-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 27px 0 22px; }
+
 .welcome-row h2 { margin: 0 0 7px; font: 600 19px 'Space Grotesk', sans-serif; }
+
+/* Description text under section headings. */
 .welcome-row p, .panel-heading p { margin: 0; color: #8792a8; font-size: 12px; line-height: 1.6; }
 
+
+/* ==========================================
+   BUTTON STYLING
+   ========================================== */
+
+/* Common styling shared by primary and secondary buttons. */
 .primary-button, .secondary-button {
   border-radius: 8px; padding: 10px 14px; font-size: 12px; font-weight: 600;
   transition: background .15s, border-color .15s;
 }
+
+/* Main purple action button. */
 .primary-button { border: 1px solid #8c74ff; background: #795df3; color: white; }
+
+/* Changes primary button colour on hover. */
 .primary-button:hover { background: #8c74ff; }
+
+/* Adds spacing before the arrow icon in the button. */
 .primary-button span { padding-left: 8px; }
+
+/* Secondary button used for less important actions. */
 .secondary-button { border: 1px solid #303a4e; background: #151c2a; color: #c7d0e1; }
+
+/* Hover effect for secondary buttons. */
 .secondary-button:hover { background: #202a3b; }
+
+/* Simple text-based button without a background or border. */
 .text-button { border: 0; background: transparent; color: #ac9aff; font-size: 11px; white-space: nowrap; }
+
+
+/* ==========================================
+   DASHBOARD STATISTICS CARDS
+   ========================================== */
+
+/* Grid layout containing the dashboard statistics cards. */
 .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 15px; }
+
+/* Common appearance for statistic cards and general panels. */
 .stat-card, .panel { border: 1px solid #222c3e; border-radius: 12px; background: #101622; }
+
+/* Individual statistic card. */
 .stat-card { min-width: 0; padding: 17px; }
+
+/* Top row containing statistic label and icon/value. */
 .stat-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: #8793a9; font-size: 9px; letter-spacing: .8px; }
+
+/* Highlighted statistic icon or value. */
 .stat-top b { color: #a99aff; font-size: 19px; }
+
+/* Large number displayed in a statistic card. */
 .stat-card h2 { margin: 18px 0 4px; font: 600 25px 'Space Grotesk', sans-serif; }
+
+/* Supporting description inside statistic cards. */
 .stat-card p { margin: 0; color: #7e8ba1; font-size: 10px; }
+
+
+/* ==========================================
+   DASHBOARD CONTENT PANELS
+   ========================================== */
+
+/* Two-column layout for dashboard panels. */
 .content-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(270px, 1fr); gap: 17px; margin-top: 18px; }
+
+/* General panel styling used throughout the dashboard. */
 .panel { padding: 20px; min-width: 0; }
+
+/* Panel heading with title and optional action button. */
 .panel-heading { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 18px; }
+
+/* Panel title. */
 .panel-heading h3 { margin: 0 0 6px; font: 600 15px 'Space Grotesk', sans-serif; }
+
+
+/* ==========================================
+   ROBOT SIMULATION GRID
+   ========================================== */
+
+/* Scrollable outer container for the simulation grid. */
 .grid-viewport { width: 100%; overflow: auto; padding: 10px; border: 1px solid #263247; border-radius: 9px; background: #0b111c; }
+
+/* Actual grid containing individual cells. */
 .grid-board { display: grid; gap: 3px; min-width: 220px; }
+
+/* Default appearance of each grid cell. */
 .grid-cell {
   aspect-ratio: 1; min-width: 0; padding: 0; display: grid; place-items: center;
   border: 1px solid #253047; border-radius: 3px; background: #121b2a; color: white;
 }
+
+/* Keeps disabled grid cells fully visible. */
 .grid-cell:disabled { opacity: 1; }
+
+/* Hover effect for cells in the interactive simulator grid. */
 .interactive-grid .grid-cell:hover { border-color: #a08aff; background: #252341; }
+
+/* Cell containing a robot. */
 .robot-cell { background: #292345; border-color: #6652ad; }
+
+/* Cell containing an obstacle. */
 .obstacle-cell { background: #3c2631; border-color: #764052; }
+
+/* Robot marker displayed inside its grid cell. */
 .robot-marker { width: 70%; height: 70%; display: grid; place-items: center; border-radius: 4px; background: #8b72ff; color: white; font-size: clamp(8px, 1.2vw, 13px); font-weight: 700; }
+
+/* Obstacle symbol displayed inside its cell. */
 .obstacle-marker { color: #ff8d9e; font-size: 17px; }
-/* Charging Station */
+
+/* Charging station cell styling. */
 .charging-station-cell {
   background: #123b43;
   border-color: #20b8c5;
 }
 
+/* Charging station symbol inside the grid. */
 .charging-station-marker {
   color: #facc15;
   font-size: clamp(10px, 1.4vw, 16px);
   font-weight: 700;
   text-shadow: 0 0 8px #facc1580;
 }
+
+/* Legend below the grid explaining different cell types. */
 .legend { display: flex; flex-wrap: wrap; gap: 17px; margin-top: 14px; color: #929eb3; font-size: 10px; }
+
 .legend span { display: flex; align-items: center; gap: 6px; }
+
+/* Small coloured squares used in the grid legend. */
 .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; }
+
 .legend-robot { background: #8b72ff; }
 .legend-obstacle { background: #b85c74; }
 .legend-empty { background: #253047; }
 .legend-charging {
   background: #20b8c5;
 }
+
+
+/* ==========================================
+   ROBOT LIST AND BATTERY INDICATORS
+   ========================================== */
+
+/* Vertical list containing robot information. */
 .robot-list { display: flex; flex-direction: column; }
+
+/* Individual row showing one robot. */
 .robot-row { display: flex; align-items: center; gap: 10px; padding: 14px 0; border-bottom: 1px solid #232c3c; }
+
+/* Removes the bottom border from the last robot row. */
 .robot-row:last-child { border-bottom: 0; }
+
+/* Small square displaying a robot's initial or identifier. */
 .robot-avatar { flex-shrink: 0; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 9px; background: #282440; color: #c6b9ff; font-weight: 700; font-size: 12px; }
+
+/* Container for robot name and other details. */
 .robot-details { flex: 1; min-width: 0; }
+
 .robot-details strong { font-size: 12px; font-weight: 600; }
+
 .robot-details p { margin: 5px 0 0; color: #818da3; font-size: 10px; }
+
+/* Battery percentage and progress bar container. */
 .robot-battery { width: 48px; text-align: right; }
+
+/* Background of the battery progress bar. */
 .battery-track { width: 100%; height: 4px; border-radius: 4px; overflow: hidden; background: #293345; }
+
+/* Filled part of the battery bar. */
 .battery-track span { display: block; height: 100%; border-radius: 4px; background: #43d7a0; }
+
 .robot-battery small { display: block; margin-top: 5px; color: #a5b2c5; font-size: 9px; }
+
+/* Button that expands to the full width of its container. */
 .full-button { width: 100%; margin-top: 15px; }
+
+
+/* ==========================================
+   SIMULATOR CONTROLS AND STATUS
+   ========================================== */
+
+/* Adds spacing above the simulator section. */
 .simulator-panel { margin-top: 27px; }
+
+/* Container for simulator settings and input controls. */
 .simulator-controls { display: flex; flex-wrap: wrap; gap: 13px; margin-bottom: 18px; }
+
+/* Labels and their input fields are arranged vertically. */
 .simulator-controls label { display: flex; flex-direction: column; gap: 7px; color: #8996ad; font-size: 11px; }
+
+/* Styling for simulator input boxes and dropdowns. */
 .simulator-controls input, .simulator-controls select {
   min-width: 100px; max-width: 180px; padding: 9px 10px; border: 1px solid #303a4e;
   border-radius: 7px; outline: none; background: #0c121e; color: #e8edf7;
 }
+
+/* Highlights an input when the user clicks or focuses on it. */
 .simulator-controls input:focus, .simulator-controls select:focus { border-color: #8b72ff; }
+
+/* Small rounded label showing the simulation status. */
 .status-pill { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #354057; border-radius: 20px; padding: 6px 10px; color: #a9b6ca; font-size: 10px; white-space: nowrap; }
+
+/* Default status indicator dot. */
 .status-pill i { width: 6px; height: 6px; border-radius: 50%; background: #7c8ba5; }
+
+/* Green status styling when simulation is running. */
 .status-pill.running { color: #67dfb0; border-color: #286b56; }
 .status-pill.running i { background: #43d7a0; }
+
+/* Bottom section of the simulator containing legend and buttons. */
 .simulator-footer { display: flex; align-items: center; justify-content: space-between; gap: 15px; flex-wrap: wrap; }
+
 .simulator-footer .legend { margin-top: 0; }
+
+/* Groups simulator action buttons in a row. */
 .action-row { display: flex; gap: 9px; }
+
+/* Informational message displayed below simulator controls. */
 .notice { margin: 18px 0 0; padding: 11px 13px; border: 1px solid #34304e; border-radius: 7px; background: #171629; color: #a8a0d1; font-size: 10px; line-height: 1.6; }
+
+
+/* ==========================================
+   HISTORY PAGE AND EMPTY STATES
+   ========================================== */
+
+/* Placeholder shown when there is no history to display. */
 .history-placeholder { margin-top: 27px; text-align: center; padding: 55px 20px; }
+
+/* Icon displayed in the history placeholder. */
 .history-icon { width: 55px; height: 55px; display: grid; place-items: center; margin: 0 auto 17px; border-radius: 15px; background: #282440; color: #bbaaff; font-size: 28px; }
+
 .history-placeholder h3 { font: 600 18px 'Space Grotesk', sans-serif; }
+
 .history-placeholder p { max-width: 440px; margin: 0 auto 22px; color: #8b97ad; font-size: 12px; line-height: 1.8; }
+
+/* Message displayed when a list or section has no data. */
 .empty-state { color: #8996ad; font-size: 12px; padding: 20px 0; }
 
+
+/* ==========================================
+   RESPONSIVE DESIGN - TABLETS
+   ========================================== */
+
+/* These styles apply when screen width is 1050px or less. */
 @media (max-width: 1050px) {
   .sidebar { width: 205px; }
   .main-content { padding-left: 22px; padding-right: 22px; }
+
+  /* Changes statistics from four columns to two. */
   .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* Stacks dashboard panels vertically. */
   .content-grid { grid-template-columns: 1fr; }
 }
+
+
+/* ==========================================
+   RESPONSIVE DESIGN - MOBILE
+   ========================================== */
+
+/* These styles apply on screens 650px wide or smaller. */
 @media (max-width: 650px) {
   .app-shell { flex-direction: column; }
+
+  /* Sidebar moves above the main content. */
   .sidebar { width: 100%; padding: 14px; border-right: 0; border-bottom: 1px solid #202838; }
+
   .brand { padding: 0 5px 15px; }
+
+  /* Hides less important sidebar information on small screens. */
   .nav-heading, .sidebar-bottom { display: none; }
+
+  /* Makes navigation buttons fit horizontally. */
   .sidebar .nav-item { display: inline-flex; width: auto; margin: 2px; padding: 9px; }
+
   .main-content { padding: 0 13px 25px; }
   .topbar { min-height: 82px; }
   .topbar h1 { font-size: 20px; }
   .eyebrow { font-size: 8px; }
   .demo-label { display: none; }
+
+  /* Stacks welcome text and button vertically. */
   .welcome-row { align-items: flex-start; flex-direction: column; }
+
   .stats-grid { gap: 9px; }
   .stat-card { padding: 12px; }
   .stat-card h2 { font-size: 20px; }
@@ -170,6 +403,11 @@
 }
 
 
+/* ==========================================
+   ROBOT TEMPLATE FORM AND CARDS
+   ========================================== */
+
+/* Grid layout for creating or editing robot templates. */
 .template-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -177,6 +415,7 @@
   margin-top: 18px;
 }
 
+/* Template form labels and their input fields. */
 .template-form label {
   display: flex;
   flex-direction: column;
@@ -185,6 +424,7 @@
   font-size: 13px;
 }
 
+/* Text inputs and dropdowns inside the template form. */
 .template-form input,
 .template-form select {
   width: 100%;
@@ -196,10 +436,12 @@
   border-radius: 8px;
 }
 
+/* Aligns template form buttons to the left. */
 .template-form button {
   justify-self: start;
 }
 
+/* Automatically adjusts the number of template cards based on available space. */
 .template-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -207,12 +449,13 @@
   margin-top: 16px;
 }
 
+/* Individual saved robot template card. */
 .template-card {
   padding: 18px;
   background: #0b1220;
   border: 1px solid #26334a;
   border-radius: 12px;
-  overflow-wrap: anywhere;
+  overflow-wrap: anywhere; /* Prevents long text from overflowing the card. */
 }
 
 .template-card h4 {
@@ -225,12 +468,19 @@
   font-size: 13px;
 }
 
+/* Makes the template form a single column on small screens. */
 @media (max-width: 600px) {
   .template-form {
     grid-template-columns: 1fr;
   }
 }
 
+
+/* ==========================================
+   ROBOT EDIT AND DELETE BUTTONS
+   ========================================== */
+
+/* Delete button used for removing a robot or template. */
 .delete-button {
   margin-left: 12px;
   padding: 8px 12px;
@@ -243,15 +493,18 @@
   font-weight: 600;
 }
 
+/* Hover effect when the delete button is enabled. */
 .delete-button:hover:not(:disabled) {
   background: #472329;
 }
 
+/* Appearance of a disabled delete button. */
 .delete-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
+/* Edit button used for modifying robot or template information. */
 .edit-button {
   margin-left: 8px;
   padding: 8px 12px;
@@ -264,10 +517,12 @@
   font-weight: 600;
 }
 
+/* Hover effect for edit button. */
 .edit-button:hover {
   background: #1d3548;
 }
 
+/* Highlights the currently selected robot's grid cell. */
 .selected-robot-cell {
   outline: 2px solid #83c8ff;
   outline-offset: -2px;
@@ -275,6 +530,11 @@
 }
 
 
+/* ==========================================
+   ROBOT INSPECTOR PANEL
+   ========================================== */
+
+/* Panel showing detailed information about a selected robot. */
 .robot-inspector {
   margin-top: 18px;
   padding: 18px;
@@ -287,11 +547,13 @@
   margin: 0 0 8px;
 }
 
+/* Supporting information inside the robot inspector. */
 .robot-inspector p {
   color: #9ba9bd;
   font-size: 13px;
 }
 
+/* Rounded label showing the robot's current status. */
 .inspector-status {
   padding: 5px 10px;
   border-radius: 20px;
@@ -300,6 +562,7 @@
   font-size: 12px;
 }
 
+/* Grid containing robot details such as battery, speed and priority. */
 .inspector-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -307,6 +570,7 @@
   margin-top: 18px;
 }
 
+/* Individual robot information boxes. */
 .inspector-grid > div {
   display: flex;
   flex-direction: column;
@@ -316,21 +580,31 @@
   background: #1c2636;
 }
 
+/* Labels for individual robot properties. */
 .inspector-grid span {
   color: #9ba9bd;
   font-size: 12px;
 }
 
+/* Actual values displayed in the inspector. */
 .inspector-grid strong {
   color: #e7edf7;
   font-size: 15px;
 }
 
+/* Changes inspector details to two columns on mobile. */
 @media (max-width: 600px) {
   .inspector-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+
+/* ==========================================
+   ROBOT INSPECTOR ACTION BUTTONS
+   ========================================== */
+
+/* Groups the buttons inside the inspector panel. */
 .inspector-actions {
   display: flex;
   align-items: center;
@@ -340,12 +614,20 @@
   pointer-events: auto;
 }
 
+/* Ensures inspector buttons remain clickable. */
 .inspector-actions button {
   position: relative;
   z-index: 3;
   pointer-events: auto;
   cursor: pointer;
 }
+
+
+/* ==========================================
+   DESTINATION CONFIGURATION PANEL
+   ========================================== */
+
+/* Main panel used to assign destinations to robots. */
 .destination-panel {
   margin: 24px 0;
   padding: 22px;
@@ -363,6 +645,7 @@
   color: #cbd5e1;
 }
 
+/* Vertical list containing destination entries. */
 .destination-list {
   display: flex;
   flex-direction: column;
@@ -370,6 +653,7 @@
   margin-top: 18px;
 }
 
+/* Row containing robot information and destination inputs. */
 .destination-row {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -381,6 +665,7 @@
   border-radius: 10px;
 }
 
+/* Container displaying the robot name and type. */
 .destination-robot {
   display: flex;
   flex-direction: column;
@@ -398,6 +683,7 @@
   color: #64748b;
 }
 
+/* Labels for destination coordinate inputs. */
 .destination-row label {
   display: flex;
   flex-direction: column;
@@ -407,6 +693,7 @@
   color: #475569;
 }
 
+/* Input fields used to enter destination coordinates. */
 .destination-row input {
   width: 100%;
   box-sizing: border-box;
@@ -417,40 +704,57 @@
   color: #172033;
 }
 
+/* Stacks destination information vertically on mobile screens. */
 @media (max-width: 650px) {
   .destination-row {
     grid-template-columns: 1fr;
     gap: 12px;
   }
 }
+
+
+/* ==========================================
+   DESTINATION PANEL DARK THEME OVERRIDES
+   ========================================== */
+
+/* These later rules override some earlier destination panel colours. */
 .destination-panel {
   background: #172033;
   border: 1px solid #334155;
   color: #f8fafc;
 }
 
+/* Dark background for each destination row. */
 .destination-row {
   background: #253247;
   border: 1px solid #3b4b63;
   color: #f8fafc;
 }
 
+/* Makes destination labels readable on the dark background. */
 .destination-row label {
   color: #cbd5e1;
 }
 
+/* Changes destination inputs to match the dark theme. */
 .destination-row input {
   background: #1e293b;
   color: #ffffff;
   border: 1px solid #475569;
 }
 
+/* Highlights the input border when selected. */
 .destination-row input:focus {
   border-color: #3b82f6;
   outline: none;
 }
 
 
+/* ==========================================
+   SIMULATION HISTORY GRID COMPARISON
+   ========================================== */
+
+/* Section containing visual simulation history. */
 .history-visual-section {
   margin-top: 24px;
 }
@@ -459,18 +763,21 @@
   margin-bottom: 14px;
 }
 
+/* Places starting and final simulation grids side by side. */
 .history-grid-comparison {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
 }
 
+/* Heading above each history grid. */
 .history-grid-comparison h5 {
   margin-bottom: 10px;
   font-size: 14px;
   color: #64748b;
 }
 
+/* Scrollable container for the smaller history grid. */
 .history-mini-grid {
   width: 100%;
   overflow-x: auto;
@@ -480,12 +787,14 @@
   border-radius: 10px;
 }
 
+/* Actual grid containing the history cells. */
 .history-mini-board {
   display: grid;
   gap: 3px;
   min-width: 180px;
 }
 
+/* Default appearance of a history grid cell. */
 .history-mini-cell {
   aspect-ratio: 1;
   min-width: 0;
@@ -501,13 +810,19 @@
 
 }
 
+/* Cell currently occupied by a robot. */
 .history-mini-cell.occupied {
   background: #2563eb;
   border-color: #60a5fa;
   color: #ffffff;
 }
 
-/* Robot movement trails */
+
+/* ==========================================
+   ROBOT MOVEMENT TRAILS IN HISTORY
+   ========================================== */
+
+/* Different trail colours help distinguish robot paths. */
 .history-mini-cell.trail-0 {
   background: #0e7490;
   border-color: #22d3ee;
@@ -538,12 +853,14 @@
   border-color: #facc15;
 }
 
-/* Keep robot markers visible above their trails */
+/* Gives robot markers a stronger appearance than movement trails. */
 .history-mini-cell.occupied {
   background: #2563eb;
   border: 2px solid #ffffff;
   color: #ffffff;
 }
+
+/* Improves heading visibility in the history section. */
 .history-visual-section h4 {
   color: #e2e8f0;
 }
@@ -552,13 +869,19 @@
   color: #94a3b8;
 }
 
+/* Shows history grids in a single column on small screens. */
 @media (max-width: 650px) {
   .history-grid-comparison {
     grid-template-columns: 1fr;
   }
 }
 
-/* Custom Attributes Section */
+
+/* ==========================================
+   CUSTOM ROBOT ATTRIBUTES
+   ========================================== */
+
+/* Main container for adding custom robot properties. */
 .custom-attributes-section {
   margin: 20px 0;
   padding: 18px;
@@ -568,12 +891,14 @@
   color: #e8edf7;
 }
 
+/* Heading of the custom attributes section. */
 .custom-attributes-section h4 {
   margin: 0 0 14px;
   color: #cbd5e5;
   font-size: 13px;
 }
 
+/* Individual row for entering a custom attribute. */
 .custom-attribute-row {
   display: flex;
   align-items: center;
@@ -585,6 +910,7 @@
   border-radius: 9px;
 }
 
+/* Input fields for custom attribute names and values. */
 .custom-attribute-row input {
   flex: 1;
   min-width: 0;
@@ -596,15 +922,18 @@
   border-radius: 8px;
 }
 
+/* Purple border when a custom attribute input is selected. */
 .custom-attribute-row input:focus {
   outline: none;
   border-color: #8b72ff;
 }
 
+/* Adds spacing above the Add Attribute button. */
 .custom-attributes-section .add-attribute-button {
   margin-top: 4px;
 }
 
+/* Allows attribute inputs to wrap on small screens. */
 @media (max-width: 600px) {
   .custom-attribute-row {
     flex-wrap: wrap;
@@ -615,11 +944,13 @@
   }
 }
 
+/* Additional heading styling for custom attributes. */
 .custom-attributes-section h4 {
   margin: 0 0 14px;
   color: inherit;
 }
 
+/* Updated appearance for custom attribute rows. */
 .custom-attribute-row {
   display: flex;
   align-items: center;
@@ -631,6 +962,7 @@
   border-radius: 9px;
 }
 
+/* Ensures attribute input fields can shrink when needed. */
 .custom-attribute-row input {
   flex: 1;
   min-width: 0;
@@ -640,6 +972,7 @@
   margin-top: 4px;
 }
 
+/* Responsive layout for custom attribute inputs. */
 @media (max-width: 600px) {
   .custom-attribute-row {
     flex-wrap: wrap;
@@ -649,7 +982,13 @@
     flex-basis: 100%;
   }
 }
-/* Fix white Custom Attribute inputs and buttons */
+
+
+/* ==========================================
+   CUSTOM ATTRIBUTE INPUT AND BUTTON FIXES
+   ========================================== */
+
+/* Forces custom attribute inputs to use the dark theme. */
 .custom-attributes-section input {
   background: #0b1220 !important;
   color: #e8edf7 !important;
@@ -658,10 +997,12 @@
   padding: 11px 12px;
 }
 
+/* Colour of placeholder text inside custom attribute inputs. */
 .custom-attributes-section input::placeholder {
   color: #8792a8 !important;
 }
 
+/* Common appearance of buttons in the custom attributes section. */
 .custom-attributes-section button {
   border-radius: 8px;
   padding: 10px 14px;
@@ -670,30 +1011,38 @@
   cursor: pointer;
 }
 
-/* Remove button */
+/* Remove button styling inside custom attributes. */
 .custom-attributes-section .delete-button {
   background: transparent !important;
   color: #ff8585 !important;
   border: 1px solid #7f3038 !important;
 }
 
-/* Add Attribute button */
+/* Add Attribute button styling. */
 .custom-attributes-section .add-attribute-button {
   background: #151c2a !important;
   color: #c7d0e1 !important;
   border: 1px solid #303a4e !important;
 }
 
+/* Hover effect for Add Attribute button. */
 .custom-attributes-section .add-attribute-button:hover {
   background: #202a3b !important;
 }
 
+
+/* ==========================================
+   ROBOT CUSTOM ATTRIBUTE DISPLAY
+   ========================================== */
+
+/* Text displaying custom properties of a robot. */
 .robot-custom-attributes p {
   margin: 4px 0;
   font-size: 12px;
   color: #9ba8bd;
 }
 
+/* Button used to expand or collapse custom attribute details. */
 .show-attributes-button {
   margin-top: 5px;
   padding: 4px 0;
@@ -705,17 +1054,25 @@
   font-weight: 600;
 }
 
+/* Changes the attribute button colour on hover. */
 .show-attributes-button:hover {
   color: #b5a7ff;
 }
 
-/* History destination markers */
+
+/* ==========================================
+   HISTORY DESTINATION MARKERS AND LEGEND
+   ========================================== */
+
+/* Special styling for destination cells in history grids. */
 .history-mini-cell.history-destination-cell {
   background: #854d0e;
   border: 1px solid #fbbf24;
   color: #fef3c7;
   font-weight: 800;
 }
+
+/* Legend explaining robot, destination and trail colours. */
 .history-mini-legend {
   display: flex;
   flex-wrap: wrap;
@@ -725,12 +1082,14 @@
   font-size: 10px;
 }
 
+/* Arranges each legend item and its symbol horizontally. */
 .history-mini-legend span {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
+/* Common size and shape of history legend symbols. */
 .history-mini-legend i {
   width: 9px;
   height: 9px;
@@ -738,15 +1097,18 @@
   border-radius: 2px;
 }
 
+/* Legend colour representing robots. */
 .legend-history-robot {
   background: #2563eb;
 }
 
+/* Legend colour representing destinations. */
 .legend-history-destination {
   background: #854d0e;
   border: 1px solid #fbbf24;
 }
 
+/* Legend colour representing movement trails. */
 .legend-history-trail {
   background: #0e7490;
 }

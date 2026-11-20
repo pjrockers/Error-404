@@ -1,28 +1,56 @@
-
+/* Imports fonts from Google Fonts.
+   DM Sans is used as the main application font.
+   Space Grotesk is used for headings and selected text. */
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
+
+/* Root element: defines default styles for the entire application. */
 :root {
-  font-family: 'DM Sans', sans-serif;
-  color: #e8edf7;
-  background: #0a0e17;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-optical-sizing: auto;
-  font-weight: 400;
+  font-family: 'DM Sans', sans-serif; /* Sets the default font. */
+  color: #e8edf7; /* Default text colour. */
+  background: #0a0e17; /* Default dark background colour. */
+
+  font-synthesis: none; /* Prevents the browser from creating artificial font styles. */
+  text-rendering: optimizeLegibility; /* Improves text readability. */
+  -webkit-font-smoothing: antialiased; /* Smooths fonts in WebKit-based browsers. */
+  -moz-osx-font-smoothing: grayscale; /* Smooths fonts on macOS Firefox. */
+
+  font-optical-sizing: auto; /* Allows variable fonts to adjust for better readability. */
+  font-weight: 400; /* Sets the default font thickness to normal. */
 }
 
-* { box-sizing: border-box; }
 
+/* Universal selector: applies to every HTML element. */
+* {
+  box-sizing: border-box; /* Includes padding and border within the element's total width and height. */
+}
+
+
+/* General styling for the webpage body. */
 body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
+  margin: 0; /* Removes the browser's default outer spacing. */
+  min-width: 320px; /* Prevents the page from becoming narrower than 320 pixels. */
+  min-height: 100vh; /* Makes the body at least as tall as the screen. */
 }
 
-button, input, select { font: inherit; }
-button { cursor: pointer; }
-button:disabled { cursor: default; }
 
-#root { min-height: 100vh; }
+/* Makes buttons, input fields and dropdowns use the same font as the application. */
+button, input, select {
+  font: inherit;
+}
+
+/* Changes the mouse pointer to a hand when hovering over buttons. */
+button {
+  cursor: pointer;
+}
+
+/* Uses the default cursor when a button is disabled. */
+button:disabled {
+  cursor: default;
+}
+
+
+/* Root container where the React application is rendered. */
+#root {
+  min-height: 100vh; /* Ensures the React application occupies at least the full screen height. */
+}

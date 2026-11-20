@@ -1,116 +1,136 @@
+/* ==========================================
+   AUTHENTICATION PAGE LAYOUT
+   ========================================== */
 
+/* Main container for the Login and Register pages. */
 .auth-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  background: #0b1120;
-  color: #e8edf7;
+  min-height: 100vh; /* Makes the page at least as tall as the screen. */
+  display: flex; /* Uses Flexbox to arrange the content. */
+  align-items: center; /* Vertically centers the authentication card. */
+  justify-content: center; /* Horizontally centers the authentication card. */
+  padding: 24px; /* Adds space around the card, especially on small screens. */
+  background: #0b1120; /* Sets the dark page background. */
+  color: #e8edf7; /* Sets the default text colour. */
 }
 
+/* Main card containing the login or registration form. */
 .auth-card {
-  width: 100%;
-  max-width: 420px;
-  padding: 36px;
-  background: #111a2b;
-  border: 1px solid #26334a;
-  border-radius: 18px;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25);
+  width: 100%; /* Allows the card to use the available width. */
+  max-width: 420px; /* Prevents the card from becoming too wide. */
+  padding: 36px; /* Adds internal spacing around the card content. */
+  background: #111a2b; /* Sets the card background colour. */
+  border: 1px solid #26334a; /* Adds a subtle border around the card. */
+  border-radius: 18px; /* Rounds the card corners. */
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25); /* Adds a shadow below the card to create depth. */
 }
 
+/* Container for the application logo and brand name. */
 .auth-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 32px;
+  display: flex; /* Places the logo and brand text side by side. */
+  align-items: center; /* Vertically aligns the logo and text. */
+  gap: 12px; /* Adds space between the logo and text. */
+  margin-bottom: 32px; /* Adds space below the brand section. */
 }
 
+/* Application name displayed beside the logo. */
 .auth-brand h2 {
-  margin: 0;
-  font-size: 20px;
+  margin: 0; /* Removes the browser's default heading margin. */
+  font-size: 20px; /* Sets the brand name text size. */
 }
 
+/* Small subtitle displayed below the application name. */
 .auth-brand p {
-  margin: 4px 0 0;
-  color: #8291a9;
-  font-size: 10px;
-  letter-spacing: 2px;
+  margin: 4px 0 0; /* Adds a small gap above the subtitle. */
+  color: #8291a9; /* Uses a lighter, muted text colour. */
+  font-size: 10px; /* Makes the subtitle smaller. */
+  letter-spacing: 2px; /* Adds spacing between letters. */
 }
 
+/* Main heading of the login or registration form. */
 .auth-card h1 {
-  margin: 0 0 10px;
-  font-size: 28px;
+  margin: 0 0 10px; /* Removes top margin and adds space below the heading. */
+  font-size: 28px; /* Sets the heading size. */
 }
 
+/* Short description below the main authentication heading. */
 .auth-subtitle {
-  margin: 0 0 28px;
-  color: #9baac0;
-  line-height: 1.6;
+  margin: 0 0 28px; /* Adds space below the subtitle. */
+  color: #9baac0; /* Uses a muted text colour. */
+  line-height: 1.6; /* Increases vertical spacing between lines. */
 }
 
+/* Form containing the labels, input fields and submit button. */
 .auth-card form {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: flex; /* Uses Flexbox for the form elements. */
+  flex-direction: column; /* Arranges form elements vertically. */
+  gap: 10px; /* Adds space between form elements. */
 }
 
+/* Labels displayed above the input fields. */
 .auth-card label {
-  margin-top: 8px;
-  font-size: 13px;
-  color: #cbd5e5;
+  margin-top: 8px; /* Adds space above each label. */
+  font-size: 13px; /* Sets the label text size. */
+  color: #cbd5e5; /* Sets the label text colour. */
 }
 
+/* Input fields used for entering login or registration details. */
 .auth-card input {
-  box-sizing: border-box;
-  width: 100%;
-  padding: 12px 14px;
-  color: #f1f5f9;
-  background: #0b1220;
-  border: 1px solid #344158;
-  border-radius: 8px;
-  outline: none;
+  box-sizing: border-box; /* Includes padding and border in the total width. */
+  width: 100%; /* Makes inputs occupy the full card width. */
+  padding: 12px 14px; /* Adds space inside the input fields. */
+  color: #f1f5f9; /* Sets the colour of entered text. */
+  background: #0b1220; /* Sets the input background colour. */
+  border: 1px solid #344158; /* Adds a border around the inputs. */
+  border-radius: 8px; /* Rounds the input corners. */
+  outline: none; /* Removes the browser's default focus outline. */
 }
 
+/* Changes the input border when the user selects an input field. */
 .auth-card input:focus {
-  border-color: #7c8cff;
+  border-color: #7c8cff; /* Highlights the selected input with a purple-blue border. */
 }
 
+/* Styling for placeholder text inside input fields. */
 .auth-card input::placeholder {
-  color: #697991;
+  color: #697991; /* Makes placeholder text appear muted. */
 }
 
+/* Main button used to submit the login or registration form. */
 .auth-submit {
-  width: 100%;
-  margin-top: 16px;
-  justify-content: center;
+  width: 100%; /* Makes the submit button occupy the full width. */
+  margin-top: 16px; /* Adds space above the submit button. */
+  justify-content: center; /* Centers the button content when Flexbox is used. */
 }
 
+/* Styling applied when the submit button is disabled. */
 .auth-submit:disabled {
-  opacity: 0.65;
-  cursor: wait;
+  opacity: 0.65; /* Makes the disabled button look faded. */
+  cursor: wait; /* Displays a waiting cursor, usually while processing. */
 }
 
+/* Displays an error message when authentication fails. */
 .auth-error {
-  margin: 8px 0 0;
-  color: #ff8f9b;
-  font-size: 13px;
-  line-height: 1.5;
+  margin: 8px 0 0; /* Adds space above the error message. */
+  color: #ff8f9b; /* Uses a reddish colour to highlight the error. */
+  font-size: 13px; /* Sets the error text size. */
+  line-height: 1.5; /* Improves readability if the message spans multiple lines. */
 }
 
+/* Text at the bottom that lets users switch between Login and Register. */
 .auth-switch {
-  margin: 24px 0 0;
-  text-align: center;
-  color: #9baac0;
-  font-size: 13px;
+  margin: 24px 0 0; /* Adds space above the switching message. */
+  text-align: center; /* Centers the text horizontally. */
+  color: #9baac0; /* Sets the text colour. */
+  font-size: 13px; /* Sets the text size. */
 }
 
+/* Button inside the switching message, such as "Sign up" or "Log in". */
 .auth-switch button {
-  padding: 0;
-  color: #a8b4ff;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 600;
+  padding: 0; /* Removes default button padding. */
+  color: #a8b4ff; /* Highlights the clickable text. */
+  background: none; /* Removes the button background. */
+  border: none; /* Removes the button border. */
+  cursor: pointer; /* Displays a hand cursor to indicate it is clickable. */
+  font: inherit; /* Uses the same font as the parent text. */
+  font-weight: 600; /* Makes the clickable text bold. */
 }

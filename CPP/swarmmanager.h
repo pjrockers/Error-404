@@ -56,7 +56,6 @@ vector<int> assignedChargingStation;
 
     // Output control.
     bool verbose;
-    string godotExportPath;      // empty = do not write the Godot file
     mutable ostream nullStream;  // swallows output when verbose == false
 
     ostream& log() const;
@@ -91,15 +90,10 @@ vector<pair<int, int> > getChargingStations() const;
     string getFinishReasonText() const;   // "all_arrived", "deadlock", ...
 
     // ---- Console mode (same behaviour as before) ----
-    // Loops runSimulationStep(), prints the map, writes the Godot file
-    // and sleeps 500 ms per step, then prints the summary.
+    // Loops runSimulationStep(), prints the map and sleeps 500 ms per step,
+    // then prints the summary.
     void runSimulation();
 
-    // ---- Godot bridge file ----
-    // Writes the state file Godot reads. Does nothing if the path is empty.
-    void exportGodotState(const string& status,
-                          const string& errorMessage) const;
-    void setGodotExportPath(const string& path);
 
     // ---- Configuration ----
     void setVerbose(bool value);

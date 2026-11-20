@@ -51,7 +51,6 @@ SwarmManager::SwarmManager(GridMap& grid)
       simulationFinished(false),
       finishReason(NOT_FINISHED),
       verbose(true),
-      godotExportPath("C:/roboSwarmBridge/robot_state.json"),
       nullStream(nullptr)
 {
 }
@@ -112,12 +111,6 @@ void SwarmManager::setVerbose(bool value)
 {
     verbose = value;
 }
-
-void SwarmManager::setGodotExportPath(const string& path)
-{
-    godotExportPath = path;
-}
-
 bool SwarmManager::addRobot(Robot* robot)
 {
     if (robot == NULL)
@@ -388,82 +381,6 @@ void SwarmManager::printSummary() const
     log() << "Arrived: " << arrived << endl;
     log() << "Waiting/blocked: " << waiting << endl;
     log() << "Low battery: " << lowBattery << endl;
-}
-
-// Writes the state file that Godot reads.
-void SwarmManager::exportGodotState(
-    const string& status,
-    const string& errorMessage) const
-{
-    if (godotExportPath.empty())
-        return;
-
-    ofstream file(godotExportPath.c_str());
-
-    if (!file.is_open())
-    {
-        cerr << "ERROR: Could not write " << godotExportPath << "\n";
-        return;
-    }
-
-    file << "{\n";
-    file << "  \"simulation_status\": \"" << status << "\",\n";
-    file << "  \"error_message\": \"" << errorMessage << "\",\n";
-    file << "  \"step\": " << currentStep << ",\n";
-    file << "  \"grid\": {\n";
-    file << "    \"rows\": " << map.getRows() << ",\n";
-    file << "    \"cols\": " << map.getCols() << "\n";
-    file << "  },\n";
-    file << "  \"obstacles\": [\n";
-
-    bool firstObstacle = true;
-
-    for (int y = 0; y < map.getRows(); y++)
-    {
-        for (int x = 0; x < map.getCols(); x++)
-        {
-            if (map.isObstacle(x, y))
-            {
-                if (!firstObstacle)
-                    file << ",\n";
-
-                file << "    {\"x\": " << x
-                     << ", \"y\": " << y << "}";
-
-                firstObstacle = false;
-            }
-        }
-    }
-
-    file << "\n  ],\n";
-    file << "  \"robots\": [\n";
-
-    for (size_t i = 0; i < robots.size(); i++)
-    {
-        Robot* robot = robots[i];
-
-        file << "    {\n";
-        file << "      \"id\": " << robot->getID() << ",\n";
-        file << "      \"x\": " << robot->getX() << ",\n";
-        file << "      \"y\": " << robot->getY() << ",\n";
-        file << "      \"start_x\": " << initialStates[i].x << ",\n";
-        file << "      \"start_y\": " << initialStates[i].y << ",\n";
-        file << "      \"dest_x\": " << robot->getDestX() << ",\n";
-        file << "      \"dest_y\": " << robot->getDestY() << ",\n";
-        file << "      \"battery\": " << robot->getBattery() << ",\n";
-        file << "      \"status\": \"" << robot->getStatus() << "\"\n";
-        file << "    }";
-
-        if (i + 1 < robots.size())
-            file << ",";
-
-        file << "\n";
-    }
-
-    file << "  ]\n";
-    file << "}\n";
-
-    file.close();
 }
 
 // Runs ONE simulation step. Returns true while the simulation
@@ -951,25 +868,19 @@ void SwarmManager::runSimulation()
 {
     log() << "\n===== STARTING SWARM SIMULATION =====\n";
 
-    exportGodotState("running", "");
-
     bool keepGoing = true;
 
     while (keepGoing)
     {
         keepGoing = runSimulationStep();
 
-        exportGodotState("running", "");
-
         // Keep the existing visual update interval.
-        if (verbose || !godotExportPath.empty())
+        if (verbose)
             SLEEP_MS(500);
     }
 
-    exportGodotState("finished", "");
     printSummary();
 }
-
 void SwarmManager::displayCurrentMap() const
 {
     vector<pair<int, int> > positions;

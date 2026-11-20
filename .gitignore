@@ -1,16 +1,12 @@
-<<<<<<< HEAD
-# Godot 4+ specific ignores
-.godot/
-/android/
-=======
 # Compiled C++ files
 *.exe
 *.o
 *.obj
 *.out
 
-# Godot generated files
-Godot/.godot/
+# Frontend dependencies and build files
+frontend/node_modules/
+frontend/dist/
 
 # IDE settings
 .vscode/
@@ -18,11 +14,11 @@ Godot/.godot/
 
 # Environment variables and secrets
 .env
->>>>>>> origin/main
 
 # Local databases
 robotswarm.db
 test.db
 
-# Local test programs
+# Temporary test programs
 compiler_test.cpp
+json_test.cpp

@@ -22,3 +22,9 @@ test.db
 # Temporary test programs
 compiler_test.cpp
 json_test.cpp
+# Generated simulation exports
+robot_states.json
+robot_states.csv
+
+# Local Godot state backup
+robot_state_backup.json

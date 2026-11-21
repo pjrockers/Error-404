@@ -1,4 +1,4 @@
-css/* ==========================================
+/* ==========================================
    MAIN APPLICATION LAYOUT
    ========================================== */
 
@@ -818,48 +818,139 @@ css/* ==========================================
 }
 
 
+
 /* ==========================================
    ROBOT MOVEMENT TRAILS IN HISTORY
    ========================================== */
 
-/* Different trail colours help distinguish robot paths. */
+/* Different pastel trail colours help distinguish robot paths. */
+
 .history-mini-cell.trail-0 {
-  background: #0e7490;
-  border-color: #22d3ee;
+    background: #B8D8E8;
+    border-color: #8BBFD6;
+    color: #243B4A;
 }
 
 .history-mini-cell.trail-1 {
-  background: #7c3aed;
-  border-color: #a78bfa;
+    background: #D7C5F2;
+    border-color: #B69BDD;
+    color: #392B50;
 }
 
 .history-mini-cell.trail-2 {
-  background: #15803d;
-  border-color: #4ade80;
+    background: #C5E6C3;
+    border-color: #9ACD97;
+    color: #29452A;
 }
 
 .history-mini-cell.trail-3 {
-  background: #c2410c;
-  border-color: #fb923c;
+    background: #F4C2D7;
+    border-color: #E5A1BD;
+    color: #593B4A;
 }
 
 .history-mini-cell.trail-4 {
-  background: #be185d;
-  border-color: #f472b6;
+    background: #B8E5DC;
+    border-color: #91CFC1;
+    color: #294A43;
 }
 
 .history-mini-cell.trail-5 {
-  background: #a16207;
-  border-color: #facc15;
+    background: #F5E7A1;
+    border-color: #DCCB72;
+    color: #50451E;
+}
+
+.history-mini-cell.trail-6 {
+    background: #B7D4F0;
+    border-color: #91BCE0;
+    color: #29425A;
+}
+
+.history-mini-cell.trail-7 {
+    background: #D9C2EE;
+    border-color: #B99BD8;
+    color: #453354;
+}
+
+.history-mini-cell.trail-8 {
+    background: #D5E8B5;
+    border-color: #B2D18D;
+    color: #394B27;
+}
+
+.history-mini-cell.trail-9 {
+    background: #F2BFC0;
+    border-color: #DFA0A2;
+    color: #583536;
+}
+
+.history-mini-cell.trail-10 {
+    background: #B9E0EC;
+    border-color: #8FC6D7;
+    color: #294650;
+}
+
+.history-mini-cell.trail-11 {
+    background: #E8D2A9;
+    border-color: #D0B77F;
+    color: #51432A;
+}
+
+.history-mini-cell.trail-12 {
+    background: #C4C9F2;
+    border-color: #A1A8DE;
+    color: #35395C;
+}
+
+.history-mini-cell.trail-13 {
+    background: #E8C5D5;
+    border-color: #D2A0B7;
+    color: #513344;
+}
+
+.history-mini-cell.trail-14 {
+    background: #B9DCC5;
+    border-color: #91C4A3;
+    color: #294737;
+}
+
+.history-mini-cell.trail-15 {
+    background: #F0D0B5;
+    border-color: #DDB18D;
+    color: #57402E;
+}
+
+.history-mini-cell.trail-16 {
+    background: #C5DFE8;
+    border-color: #9FC5D2;
+    color: #304851;
+}
+
+.history-mini-cell.trail-17 {
+    background: #E2D5F0;
+    border-color: #BEACD5;
+    color: #493B56;
+}
+
+.history-mini-cell.trail-18 {
+    background: #DCE3A9;
+    border-color: #BEC987;
+    color: #454B2C;
+}
+
+.history-mini-cell.trail-19 {
+    background: #E9BFD0;
+    border-color: #D59BB2;
+    color: #563443;
 }
 
 /* Gives robot markers a stronger appearance than movement trails. */
 .history-mini-cell.occupied {
-  background: #2563eb;
-  border: 2px solid #ffffff;
-  color: #ffffff;
+    background: #C2185B;
+    border: 2px solid #ffffff;
+    color: #ffffff;
 }
-
 /* Improves heading visibility in the history section. */
 .history-visual-section h4 {
   color: #e2e8f0;
@@ -1066,7 +1157,7 @@ css/* ==========================================
 
 /* Special styling for destination cells in history grids. */
 .history-mini-cell.history-destination-cell {
-  background: #854d0e;
+  background: #C27E79;
   border: 1px solid #fbbf24;
   color: #fef3c7;
   font-weight: 800;
@@ -1099,12 +1190,12 @@ css/* ==========================================
 
 /* Legend colour representing robots. */
 .legend-history-robot {
-  background: #2563eb;
+  background: #C2185B;
 }
 
 /* Legend colour representing destinations. */
 .legend-history-destination {
-  background: #854d0e;
+  background: #C27E79;
   border: 1px solid #fbbf24;
 }
 

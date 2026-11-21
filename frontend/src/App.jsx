@@ -2665,7 +2665,7 @@ function HistoryMiniGrid({ rows, cols, result, positionType }) {
             <div
               key={`${x}-${y}`}
               className={`history-mini-cell ${
-                trail ? `trail-${trail.index % 6}` : ""
+                trail ? `trail-${trail.index % 20}` : ""
               } ${robot ? "occupied" : ""} ${
                 destination ? "history-destination-cell" : ""
               }`}

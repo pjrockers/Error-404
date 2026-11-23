@@ -1295,7 +1295,6 @@ async function addRobot() {
         )}
       </div>
     </div>
-  )
     </div>
   );
 })()}
